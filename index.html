@@ -2256,7 +2256,7 @@ let evaluationCache = new Map();
 
 // --- Classes ---
 class StandardWeights {
-    constructor() {
+    constructor(overrides = null) {
         this.back_to_back = 52;
         this.bumpiness = -24;
         this.bumpiness_sq = -7;
@@ -2290,9 +2290,11 @@ class StandardWeights {
         this.wasted_t = -152;
         this.soft_drop = -100;
         this.COMBO_GARBAGE = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5];
+        if (overrides) {
+            Object.assign(this, overrides);
+        }
     }
 }
-
 
 class TetrisBoard {
     constructor(baseBoard = null) {
@@ -2767,12 +2769,15 @@ class AIAgent {
         lfgCache.clear();
         evaluationCache.clear();
     }
-
-            // ★引数 enabledTemplates を追加★
-            initSearch(currentBoard, pieceQueue, currentHoldPiece, isB2B, combo, enabledTemplates) {
+           
+        initSearch(currentBoard, pieceQueue, currentHoldPiece, isB2B, combo, enabledTemplates, weightOverrides) {
         const wasTemplateActive = this.activeTemplate !== null;
+        if (weightOverrides) {
+            this.weights = new StandardWeights(weightOverrides);
+        }
         if (this.activeTemplate) {
             let foundValidOffset = -1;
+
             let isCompleted = false;
 
             for (let offset = 0; offset <= 12; offset++) {
@@ -3366,8 +3371,8 @@ function thinkingLoop() {
 
 self.onmessage = (e) => {
     // ★activeTemplates を受け取る★
-    const { type, boardString, nextString, holdPiece, canHold, isB2B, ren, activeTemplates } = e.data;
-    if (type === 'start') {
+    const { type, boardString, nextString, holdPiece, canHold, isB2B, ren, activeTemplates, weights } = e.data;
+if (type === 'start') {
         try {
             const layout = JSON.parse(boardString);
             const board = TetrisBoard.fromSimulatorBoard(layout);
@@ -3381,10 +3386,11 @@ self.onmessage = (e) => {
             }
 
             // ★activeTemplates を渡す★
-            aiAgent.initSearch(board, currentQueue, hold, isB2B, ren, activeTemplates);
-            if (canHold !== undefined && aiAgent.rootID !== -1 && aiAgent.nodeMap[aiAgent.rootID]) {
+            aiAgent.initSearch(board, currentQueue, hold, isB2B, ren, activeTemplates, weights);
+if (canHold !== undefined && aiAgent.rootID !== -1 && aiAgent.nodeMap[aiAgent.rootID]) {
                 aiAgent.nodeMap[aiAgent.rootID].holdUsedThisTurn = !canHold;
             }
+
 
             if (!isThinking) {
                 isThinking = true;
@@ -3798,6 +3804,43 @@ const AI_TEMPLATE_CONFIG = [
     { id: 'meisou', label: '迷走砲' },
     { id: 'sangaku_2', label: '山岳積み2号' }
 ];
+
+const DEFAULT_AI_WEIGHTS = {
+    back_to_back: 52,
+    bumpiness: -24,
+    bumpiness_sq: -7,
+    row_transitions: -5,
+    height: -39,
+    top_half: -150,
+    top_quarter: -511,
+    jeopardy: -11,
+    cavity_cells: -173,
+    cavity_cells_sq: -3,
+    overhang_cells: -34,
+    overhang_cells_sq: -1,
+    covered_cells: -17,
+    covered_cells_sq: -1,
+    tslot: [8, 148, 192, 407],
+    well_depth: 57,
+    max_well_depth: 17,
+    well_column: [20, 23, 20, 50, 59, 21, 59, 10, -10, 24],
+    b2b_clear: 104,
+    clear1: -320,
+    clear2: -200,
+    clear3: -178,
+    clear4: 270,
+    tspin1: 1,
+    tspin2: 290,
+    tspin3: 482,
+    mini_tspin1: -158,
+    mini_tspin2: -93,
+    perfect_clear: 999,
+    combo_garbage: 150,
+    wasted_t: -152,
+    soft_drop: -100,
+    COMBO_GARBAGE: [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5]
+};
+
 // デフォルトのレイアウト生成関数
 function generateDefaultLayout() {
     const blockSize = 28;
@@ -3841,8 +3884,9 @@ let gameSettings = {
     aiMoveDelay: 30,
     aiSdfDelay: 30,
     drawMoveDelay: 30,
-        aiTemplates: { meisou: true, sangaku_2: true },
-   
+    aiTemplates: { meisou: true, sangaku_2: 
+true },
+    aiWeights: JSON.parse(JSON.stringify(DEFAULT_AI_WEIGHTS)),
     debugEnabled: false,
     pieceForPieceMode: false,
    
@@ -4975,15 +5019,17 @@ requestAiMove() {
                 nextString = nextPiecesForWorker.join('');
             }
 
-                        aiWorkerStartPayload = {
+            aiWorkerStartPayload = {
                 type: 'start',
                 boardString: boardString,
                 nextString: nextString,
                 holdPiece: holdPieceToSend,
-                canHold: this.canHold,
+   
+             canHold: this.canHold,
                 isB2B: this.isB2B,
                 ren: this.ren + 1,
-                activeTemplates: gameSettings.aiTemplates
+                activeTemplates: gameSettings.aiTemplates,
+                weights: gameSettings.aiWeights
             };
         }
         if (this.aiWorker) {
@@ -6222,9 +6268,93 @@ function populateAiSettingsTab() {
     const pfpSpan = document.createElement('span');
     pfpSpan.textContent = 'Piece For Piece';
     
-    pfpLabel.append(pfpCheckbox, pfpSpan);
+        pfpLabel.append(pfpCheckbox, pfpSpan);
     pfpItem.appendChild(pfpLabel);
     list.appendChild(pfpItem);
+
+    if (gameSettings.debugEnabled) {
+        const weightHeader = document.createElement('div');
+        weightHeader.className = 'setting-item';
+        weightHeader.style.cssText = 'margin-top:20px; border-top:1px solid var(--primary-color); padding-top:15px; font-weight:bold; flex-direction: column; gap: 10px;';
+        weightHeader.innerHTML = '<span>AI重み設定 (Debug)</span>';
+        
+        const controlsDiv = document.createElement('div');
+        controlsDiv.style.display = 'flex';
+        controlsDiv.style.gap = '10px';
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'button';
+        copyBtn.textContent = '設定をコピー';
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(JSON.stringify(gameSettings.aiWeights, null, 2));
+            alert('AI設定をクリップボードにコピーしました');
+        };
+        
+        const pasteBtn = document.createElement('button');
+        pasteBtn.className = 'button';
+        pasteBtn.textContent = '設定をペースト';
+        pasteBtn.onclick = async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                const json = JSON.parse(text);
+                Object.assign(gameSettings.aiWeights, json);
+                populateAiSettingsTab();
+                alert('AI設定を読み込みました');
+            } catch(e) {
+                alert('読み込み失敗: ' + e);
+            }
+        };
+
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'button';
+        resetBtn.textContent = '初期値に戻す';
+        resetBtn.onclick = () => {
+            if(confirm('AI設定を初期値に戻しますか？')) {
+                gameSettings.aiWeights = JSON.parse(JSON.stringify(DEFAULT_AI_WEIGHTS));
+                populateAiSettingsTab();
+            }
+        };
+
+        controlsDiv.append(copyBtn, pasteBtn, resetBtn);
+        weightHeader.appendChild(controlsDiv);
+        list.appendChild(weightHeader);
+
+        Object.keys(gameSettings.aiWeights).forEach(key => {
+            const val = gameSettings.aiWeights[key];
+            const isArray = Array.isArray(val);
+            
+            const item = document.createElement('div');
+            item.className = 'setting-item';
+            
+            const label = document.createElement('span');
+            label.textContent = key;
+            
+            const input = document.createElement('input');
+            if (isArray) {
+                input.type = 'text';
+                input.value = JSON.stringify(val);
+                input.style.width = '200px';
+                input.onchange = (e) => {
+                    try {
+                        gameSettings.aiWeights[key] = JSON.parse(e.target.value);
+                    } catch(err) {
+                        alert('配列の形式が不正です');
+                        e.target.value = JSON.stringify(gameSettings.aiWeights[key]);
+                    }
+                };
+            } else {
+                input.type = 'number';
+                input.value = val;
+                input.onchange = (e) => {
+                    gameSettings.aiWeights[key] = parseFloat(e.target.value);
+                };
+            }
+            
+            item.append(label, input);
+            list.appendChild(item);
+        });
+    }
+
     const tempHeader = document.createElement('div');
     tempHeader.className = 'setting-item';
     tempHeader.style.cssText = 'margin-top:20px; border-top:1px solid var(--primary-color); padding-top:15px; font-weight:bold;';
