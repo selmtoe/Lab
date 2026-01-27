@@ -3151,13 +3151,14 @@ class AIAgent {
             const p = node.place;
             const h = this.searchHintMove;
             if (p.pieceType === h.pieceType && p.rotation === h.rotation && p.x === h.x && p.y === h.y) {
-                // 非常に高いボーナスを与えて優先的に探索させる
-                acc_eval += 1000000000;
+                // 評価値は加算せず、優先探索フラグのみ立てる
+                node.isHint = true;
             }
         }
         // ----------------------
 
         // Cache Check (Zobrist Hash = Integer)
+
 
         const boardHash = board.getHash();
         if (evaluationCache.has(boardHash)) {
@@ -3264,15 +3265,24 @@ class AIAgent {
 
             let totalWeight = 0;
             const weights = children.map((child, i) => {
+                // ヒントノードなら、評価値に関係なく選択確率を極端に上げる
+                if (child.isHint) {
+                    const weight = 1e12;
+                    totalWeight += weight;
+                    return weight;
+                }
+
                 const E_I = evals[i];
                 const rank_I = ranks[i];
                 const eval_part = Math.pow(E_I - Emin + 1.0, 2) + 10.0;
                 const rank_part = Math.pow(rank_I - 1.0, 2) + 1.0;
+      
                 const weight = eval_part / rank_part;
                 totalWeight += weight;
                 return weight;
             });
             let rand = Math.random() * totalWeight;
+
             let selectedChild = null;
             for (let i = 0; i < weights.length; i++) {
                 rand -= weights[i];
