@@ -2884,9 +2884,9 @@ class AIAgent {
             }
         }
         
-        // ----------------------
+                let reuseTree = false;
+        this.searchHintMove = null; // 前回の探索結果に基づくヒントをリセット
 
-        let reuseTree = false;
         // 探索木の再利用チェック
         // テンプレートが「現在アクティブ」または「直前までアクティブだった」場合はリセットする
         if (!this.activeTemplate && !wasTemplateActive && this.rootID !== -1 && this.nodeMap[this.rootID]) {
@@ -2899,6 +2899,22 @@ class AIAgent {
                 reuseTree = true;
                 rootNode.b2b = isB2B;
                 rootNode.comboCount = combo;
+            } else {
+                // ハッシュが合わない場合、おじゃまによる「せり上がり」かどうかを判定
+                const shift = this.detectGarbageShift(currentBoard, rootNode.board);
+                if (shift > 0) {
+                    // せり上がりを検知した場合、前回の最善手を補正してヒントにする
+                    if (this.bestNodeIDAtDepth1 !== -1 && this.nodeMap[this.bestNodeIDAtDepth1]) {
+                        const oldPlace = this.nodeMap[this.bestNodeIDAtDepth1].place;
+                        if (oldPlace) {
+                            // 座標を上にずらす (y - shift)
+                            this.searchHintMove = { ...oldPlace, y: oldPlace.y - shift };
+                            self.postMessage({ type: 'debug', message: `Garbage Shift Detected: n=${shift}. Adjusting best move.` });
+                        }
+                    }
+                } else {
+                    self.postMessage({ type: 'debug', message: 'Board mismatch (No simple shift).' });
+                }
             }
         }
 
@@ -2906,6 +2922,7 @@ class AIAgent {
             // Reset Vector
             this.nodeIdCounter = 0;
             this.rootID = this.makeID();
+
             
             const rootNode = new Node(this.rootID, currentBoard, null, -1, 0, combo, isB2B, currentHoldPiece, false);
             this.nodeMap[this.rootID] = rootNode;
@@ -2931,11 +2948,48 @@ class AIAgent {
             this.expand(this.rootID, pieceQueue[0], pieceQueue[1]);
         }
         
-        // 配列なのでlengthではなくCounterを使う
+                // 配列なのでlengthではなくCounterを使う
         this.totalNodesInSearch = this.nodeIdCounter;
     }
 
+    // 盤面が oldBoard から n段せり上がった状態か判定する
+    detectGarbageShift(currentB, oldB) {
+        // n=1 (1段せり上がり) から n=12 (12段) までチェック
+        for (let n = 1; n <= 12; n++) {
+            let match = true;
+            // 1. 共通部分の完全一致チェック
+            // currentの y 行目は、old の y + n 行目と一致するはず
+            for (let y = 0; y < BOARD_HEIGHT - n; y++) {
+                if (currentB.rows[y] !== oldB.rows[y + n]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (!match) continue;
+
+            // 2. せり上がった下部 (currentのBottom n行) がおじゃま (9マス以上埋まっている) かチェック
+            for (let y = BOARD_HEIGHT - n; y < BOARD_HEIGHT; y++) {
+                let count = 0;
+                let val = currentB.rows[y];
+                // ビットカウント
+                while (val > 0) {
+                    val &= (val - 1);
+                    count++;
+                }
+                // 通常のおじゃまラインは穴1つなので9ブロックあるはず
+                if (count < 9) {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match) return n;
+        }
+        return 0;
+    }
+
     searchStep(iterations, pieceQueue) {
+
         if (this.rootID === -1 || !this.nodeMap[this.rootID]) return;
         let count = 0;
         while (count < iterations && this.totalNodesInSearch < SEARCH_ITERATION_LIMIT) {
@@ -3072,7 +3126,7 @@ class AIAgent {
                 if (placementResult.wastedT) acc_eval += weights.wasted_t;
         if (node.place && node.place.isSoftDrop) acc_eval += weights.soft_drop;
 
-        // --- Template Bonus ---
+                // --- Template Bonus ---
         if (this.activeTemplate && node.place) {
             const p = node.place;
             // リスト内のいずれかの手と一致するかチェック (上から優先)
@@ -3088,9 +3142,21 @@ class AIAgent {
                 }
             }
         }
+        
+        // --- Shift Hint Bonus ---
+        // ガベージ等で盤面がずれた際、補正された前回最善手を優先する
+        if (this.searchHintMove && node.place) {
+            const p = node.place;
+            const h = this.searchHintMove;
+            if (p.pieceType === h.pieceType && p.rotation === h.rotation && p.x === h.x && p.y === h.y) {
+                // 非常に高いボーナスを与えて優先的に探索させる
+                acc_eval += 1000000000;
+            }
+        }
         // ----------------------
 
         // Cache Check (Zobrist Hash = Integer)
+
         const boardHash = board.getHash();
         if (evaluationCache.has(boardHash)) {
             const transient_eval = evaluationCache.get(boardHash);
