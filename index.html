@@ -2756,13 +2756,13 @@ class AIAgent {
         this.rootID = -1;
         this.totalNodesInSearch = 0;
         this.bestNodeIDAtDepth1 = -1;
-        
         this.activeTemplate = null;
         this.activeTemplateOffset = 0;
-        // 現在有効なテンプレート
+        this.detectedShift = 0;
     }
 
     // makeID: Simple integer increment
+
     makeID() { return this.nodeIdCounter++; }
     
     clearCaches() {
@@ -2770,10 +2770,12 @@ class AIAgent {
         evaluationCache.clear();
     }
            
-        initSearch(currentBoard, pieceQueue, currentHoldPiece, isB2B, combo, enabledTemplates, weightOverrides) {
+    initSearch(currentBoard, pieceQueue, currentHoldPiece, isB2B, combo, enabledTemplates, weightOverrides) {
+        this.detectedShift = 0;
         const wasTemplateActive = this.activeTemplate !== null;
         if (weightOverrides) {
             this.weights = new StandardWeights(weightOverrides);
+
         }
         if (this.activeTemplate) {
             let foundValidOffset = -1;
@@ -2903,16 +2905,16 @@ class AIAgent {
                 // ハッシュが合わない場合、おじゃまによる「せり上がり」かどうかを判定
                 const shift = this.detectGarbageShift(currentBoard, rootNode.board);
                 if (shift > 0) {
-                    // せり上がりを検知した場合、前回の最善手を補正してヒントにする
                     if (this.bestNodeIDAtDepth1 !== -1 && this.nodeMap[this.bestNodeIDAtDepth1]) {
                         const oldPlace = this.nodeMap[this.bestNodeIDAtDepth1].place;
                         if (oldPlace) {
                             // 座標を上にずらす (y - shift)
                             this.searchHintMove = { ...oldPlace, y: oldPlace.y - shift };
-                            self.postMessage({type: "debug",message: "Garbage Shift Detected: n=" + shift + ". Adjusting best move."});
+                            this.detectedShift = shift;
                         }
                     }
                 } else {
+
                     self.postMessage({ type: 'debug', message: 'Board mismatch (No simple shift).' });
                 }
             }
@@ -3427,7 +3429,8 @@ function thinkingLoop() {
         self.postMessage({ 
             type: 'nodeCount', 
             count: aiAgent.totalNodesInSearch,
-            template: aiAgent.activeTemplate ? aiAgent.activeTemplate.name : null
+            template: aiAgent.activeTemplate ? aiAgent.activeTemplate.name : null,
+            shift: aiAgent.detectedShift
         });
         lastUpdateTime = now;
     }
@@ -4155,11 +4158,14 @@ if (debugDisplay && gameSettings.debugEnabled) {
 const status = debugDisplay.dataset.status || 'Waiting...';
                         
                         debugDisplay.style.display = 'block';
-                        const color = status.includes('RESET') ? '#ff4444' : (status.includes('REUSED') ? '#44ff44' : 'white');
+                        const color = status.includes('RESET') ?
+                            '#ff4444' : (status.includes('REUSED') ? '#44ff44' : 'white');
                         const templateInfo = e.data.template ? `<br>Template: <span style="color: #00ffff">${e.data.template}</span>` : '';
-                        debugDisplay.innerHTML = `Status: <span style="color: ${color}">${status}</span><br>Nodes: ${e.data.count}${templateInfo}`;
+                        const shiftInfo = e.data.shift ? `<br>Shift: <span style="color: #ff8800">+${e.data.shift}</span>` : '';
+                        debugDisplay.innerHTML = `Status: <span style="color: ${color}">${status}</span><br>Nodes: ${e.data.count}${templateInfo}${shiftInfo}`;
                     }
                 } else if (gameState === 'PLAYING' && this.isAiThinking) {
+
                     this.executeAiMove(e.data);
                 }
             };
