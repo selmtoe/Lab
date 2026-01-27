@@ -2909,7 +2909,7 @@ class AIAgent {
                         if (oldPlace) {
                             // 座標を上にずらす (y - shift)
                             this.searchHintMove = { ...oldPlace, y: oldPlace.y - shift };
-                            self.postMessage({ type: 'debug', message: `Garbage Shift Detected: n=${shift}. Adjusting best move.` });
+                            self.postMessage({type: "debug",message: "Garbage Shift Detected: n=" + shift + ". Adjusting best move."});
                         }
                     }
                 } else {
