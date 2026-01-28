@@ -7575,11 +7575,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 memMon.style.display = gameSettings.debugEnabled ? 'block' : 'none';
 
-                const aiDebugDisplay = document.getElementById('ai-tree-debug-display');
-                if (aiDebugDisplay) {
-                    aiDebugDisplay.style.display = gameSettings.debugEnabled ? 'block' : 'none';
-                }
-            }
+                // AI関連のデバッグ要素をまとめて表示/非表示切り替え
+                const debugIds = ['ai-tree-debug-display', 'ai-debug-display', 'ai-debug-controls'];
+                debugIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.style.display = gameSettings.debugEnabled ? 'block' : 'none';
+                    }
+                });
+             }
         });
     }
 
