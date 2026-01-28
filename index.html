@@ -1749,7 +1749,57 @@ for (let i = 0; i < ZOBRIST_TABLE.length; i++) {
 }
 
 const TEMPLATES = [
-    {
+        {
+        name: 'intai_1st',
+        type: 'intai',
+        board: [[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,"G",null,null,null,null],["G",null,null,null,null,"G","G","G",null,null],["G","G",null,null,"G","G","G","G","G",null],["G","G",null,null,null,"G","G","G","G","G"],["G","G","G",null,"G","G","G","G","G","G"]],
+        moves: [
+            {t:'Z', x:7, y:39, r:0},
+            {t:'I', x:0, y:37, r:3},
+            {t:'T', x:5, y:39, r:0},
+            {t:'O', x:6, y:37, r:0},
+            {t:'S', x:8, y:38, r:1},
+            {t:'L', x:1, y:38, r:1},
+            {t:'J', x:5, y:36, r:3}
+        ],
+        trigger: (board, queue, hold) => {
+            // 1. 直近の7ミノを取得 (Holdがある場合はHold+Queue先頭6個)
+            const minos = [];
+            if (hold) minos.push(hold);
+            for (const p of queue) {
+                if (minos.length >= 7) break;
+                minos.push(p);
+            }
+
+            // 【条件1】7種1巡チェック (7個のミノに重複がないか)
+            // ミノの種類をカウント
+            const counts = {};
+            for (const m of minos) {
+                counts[m] = (counts[m] || 0) + 1;
+            }
+            // 重複があれば false (どれか一つでも2個以上あればNG)
+            // 7種1巡であれば、長さ7で重複なし＝すべてのミノが1個ずつ存在するはずです
+            const uniqueMinos = Object.keys(counts);
+            if (minos.length < 7 || uniqueMinos.length < 7) return false;
+
+
+            // 【条件2】(TがJよりも早い) または (ZがOよりも早い)
+            const tIndex = minos.indexOf('T');
+            const jIndex = minos.indexOf('J');
+            const zIndex = minos.indexOf('Z');
+            const oIndex = minos.indexOf('O');
+
+            // 存在チェック（条件1を通っていれば全て存在するはずですが念のため）
+            if (tIndex === -1 || jIndex === -1 || zIndex === -1 || oIndex === -1) return false;
+
+            const conditionA = tIndex < jIndex; // TがJより先
+            const conditionB = zIndex < oIndex; // ZがOより先
+
+            // A または B を満たせば true
+            return conditionA || conditionB;
+        }
+    },
+        {
         name: 'meisou_1st',
         type: 'meisou',
         board: [[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],[null,null,null,null,null,null,null,null,null,null],["G",null,null,null,null,null,null,null,null,null],["G","G","G",null,"G",null,null,"G",null,null],["G","G","G","G","G","G",null,"G","G","G"],["G","G","G","G","G",null,"G","G","G","G"]],
