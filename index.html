@@ -4174,12 +4174,7 @@ const status = debugDisplay.dataset.status || 'Waiting...';
                             '#ff4444' : (status.includes('REUSED') ? '#44ff44' : 'white');
                         const templateInfo = e.data.template ? `<br>Template: <span style="color: #00ffff">${e.data.template}</span>` : '';
                         const shiftInfo = e.data.shift ? `<br>Shift: <span style="color: #ff8800">+${e.data.shift}</span>` : '';
-                        let memInfo = '';
-                        if (window.performance && window.performance.memory) {
-                            memInfo = `<br>Mem: ${Math.round(window.performance.memory.usedJSHeapSize / 1048576)}MB`;
-                        }
-                        debugDisplay.innerHTML = `Status: <span style="color: ${color}">${status}</span><br>Nodes: ${e.data.count}${templateInfo}${shiftInfo}${memInfo}`;
-
+                        debugDisplay.innerHTML = `Status: <span style="color: ${color}">${status}</span><br>Nodes: ${e.data.count}${templateInfo}${shiftInfo}`;
                     }
                 } else if (gameState === 'PLAYING' && this.isAiThinking) {
 
