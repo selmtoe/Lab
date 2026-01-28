@@ -6858,22 +6858,22 @@ const modelReadyPromise = new Promise(resolve => modelReadyResolver = resolve);
 async function initOnnxModel() {
     try {
         onnxSession = await ort.InferenceSession.create('./Load%20PPT/tetris.onnx', { executionProviders: ['wasm'] });
-        console.log("ONNX Model loaded.");
+console.log("ONNX Model loaded.");
         if (modelReadyResolver) modelReadyResolver(true);
     } catch (e) {
         console.error("Failed to load ONNX model:", e);
-        if (modelReadyResolver) modelReadyResolver(false);
+if (modelReadyResolver) modelReadyResolver(false);
     }
 }
-initOnnxModel();
 
 async function processPptImage(file) {
+
     if (!onnxSession) {
-        await modelReadyPromise;
-        if (!onnxSession) {
+        await initOnnxModel();
+if (!onnxSession) {
             alert("AIモデルの読み込みに失敗しました。");
             return;
-        }
+}
     }
     
     document.getElementById('mode-2p').click();
@@ -7463,13 +7463,26 @@ function pollGamepads() {
 
 let lastAnalysisSample = 0;
 function gameLoop(currentTime) {
+    if (gameSettings.debugEnabled) {
+        const memMon = document.getElementById('memory-monitor');
+        if (memMon) {
+            if (performance && performance.memory) {
+                const used = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                const total = Math.round(performance.memory.totalJSHeapSize / 1024 / 1024);
+                memMon.textContent = `Mem: ${used}MB / ${total}MB`;
+            } else {
+                memMon.textContent = `Mem: N/A`;
+            }
+        }
+    }
+
     if (!ctx) return;
     pollGamepads();
     const dt = currentTime - lastTime;
-    lastTime = currentTime;
+lastTime = currentTime;
     ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
     if (gameState === 'PLAYING') {
-        // ここにあった画像描画処理を削除しました
+
         
         players.forEach(p => p.update(dt || 0));
         players.forEach(p => p.draw());
@@ -7543,7 +7556,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameSettings.debugEnabled = !gameSettings.debugEnabled;
                 alert(`デバッグモード: ${gameSettings.debugEnabled ? "ON" : "OFF"}`);
                 debugClickCount = 0;
-                
+    
+                let memMon = document.getElementById('memory-monitor');
+                if (!memMon) {
+                    memMon = document.createElement('div');
+                    memMon.id = 'memory-monitor';
+                    memMon.style.position = 'fixed';
+                    memMon.style.top = '0';
+                    memMon.style.right = '0';
+                    memMon.style.background = 'rgba(0,0,0,0.8)';
+                    memMon.style.color = '#00ff00';
+                    memMon.style.padding = '5px 10px';
+                    memMon.style.fontFamily = 'monospace';
+                    memMon.style.fontSize = '12px';
+                    memMon.style.zIndex = '10000';
+                    memMon.style.pointerEvents = 'none';
+                    document.body.appendChild(memMon);
+                }
+                memMon.style.display = gameSettings.debugEnabled ? 'block' : 'none';
+
                 const aiDebugDisplay = document.getElementById('ai-tree-debug-display');
                 if (aiDebugDisplay) {
                     aiDebugDisplay.style.display = gameSettings.debugEnabled ? 'block' : 'none';
@@ -7551,6 +7582,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
 
     mainCanvas = document.getElementById('mainCanvas'); ctx = mainCanvas.getContext('2d');
     
