@@ -6356,26 +6356,28 @@ function populateAiSettingsTab() {
         gameSettings.pieceForPieceMode = e.target.checked;
     };
     
-    const pfpSpan = document.createElement('span');
-    pfpSpan.textContent = 'Piece For Piece';
-    
-        pfpLabel.append(pfpCheckbox, pfpSpan);
-    pfpItem.appendChild(pfpLabel);
+const pfpSpan = document.createElement('span');
+pfpSpan.textContent = 'Piece For Piece';
+pfpLabel.append(pfpCheckbox, pfpSpan);
+pfpItem.appendChild(pfpLabel);
+list.appendChild(pfpItem);
 
-    const banPcLabel = document.createElement('label');
-    banPcLabel.style.marginLeft = '15px';
-    const banPcCheckbox = document.createElement('input');
-    banPcCheckbox.type = 'checkbox';
-    banPcCheckbox.checked = !!gameSettings.banPC;
-    banPcCheckbox.onchange = e => {
-        gameSettings.banPC = e.target.checked;
-    };
-    const banPcSpan = document.createElement('span');
-    banPcSpan.textContent = 'PC禁止';
-    banPcLabel.append(banPcCheckbox, banPcSpan);
-    pfpItem.appendChild(banPcLabel);
+const banPcItem = document.createElement('div');
+banPcItem.className = 'setting-item';
 
-    list.appendChild(pfpItem);
+const banPcLabel = document.createElement('label');
+const banPcCheckbox = document.createElement('input');
+banPcCheckbox.type = 'checkbox';
+banPcCheckbox.checked = !!gameSettings.banPC;
+banPcCheckbox.onchange = e => {
+    gameSettings.banPC = e.target.checked;
+};
+const banPcSpan = document.createElement('span');
+banPcSpan.textContent = 'PC禁止';
+banPcLabel.append(banPcCheckbox, banPcSpan);
+banPcItem.appendChild(banPcLabel);
+
+list.appendChild(banPcItem);
 if (gameSettings.debugEnabled) {
 
         const weightHeader = document.createElement('div');
