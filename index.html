@@ -1788,12 +1788,11 @@ const TEMPLATES = [
             const jIndex = minos.indexOf('J');
             const zIndex = minos.indexOf('Z');
             const oIndex = minos.indexOf('O');
-
-            // 存在チェック（条件1を通っていれば全て存在するはずですが念のため）
+            const sIndex = minos.indexOf('S');
             if (tIndex === -1 || jIndex === -1 || zIndex === -1 || oIndex === -1) return false;
 
-            const conditionA = tIndex < jIndex; // TがJより先
-            const conditionB = zIndex < oIndex && zIndex < tIndex; 
+            const conditionA = tIndex < jIndex;
+            const conditionB = zIndex < oIndex && zIndex < sIndex;
             
             // A または B を満たせば true
             return conditionA || conditionB;
