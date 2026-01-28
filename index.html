@@ -1793,8 +1793,8 @@ const TEMPLATES = [
             if (tIndex === -1 || jIndex === -1 || zIndex === -1 || oIndex === -1) return false;
 
             const conditionA = tIndex < jIndex; // TがJより先
-            const conditionB = zIndex < oIndex; // ZがOより先
-
+            const conditionB = zIndex < oIndex && zIndex < tIndex; 
+            
             // A または B を満たせば true
             return conditionA || conditionB;
         }
