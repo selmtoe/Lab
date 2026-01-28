@@ -1793,9 +1793,7 @@ const TEMPLATES = [
 
             const conditionA = tIndex < jIndex;
             const conditionB = zIndex < oIndex && zIndex < sIndex;
-            
-            // A または B を満たせば true
-            return conditionA || conditionB;
+            return conditionA && conditionB;
         }
     },
         {
