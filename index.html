@@ -240,6 +240,7 @@
 
 <main id="main-view" class="container"></main>
 
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="data/articles.js"></script>
 <script src="data/videos.js"></script>
 <script src="data/tetofu.js"></script>
@@ -352,8 +353,9 @@
                 <h1 class="article-title">${article.title}</h1>
                 <div>${createTagHtml(article.tags)}</div>
             </div>
-            <div class="article-body">${article.content}</div>
+            <div class="article-body">${marked.parse(article.content)}</div>
         `;
+
 
         // 関連記事のサジェスト（タグの共通数で計算）
         const related = getArticles()
