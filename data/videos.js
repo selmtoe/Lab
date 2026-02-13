@@ -6,9 +6,9 @@ window.LAB_VIDEOS = [
         youtubeId: 'dQw4w9WgXcQ', // 例: 動画のIDを指定
         tags: ['掘り', '相殺管理', 'トッププレイヤー'],
         timestamps: [
-            { time: 45, label: '下穴を3つ先まで見据えた置き方' },
-            { time: 120, label: '相殺外しによる意図的なリソース蓄積' },
-            { time: 240, label: 'Iミノを温存したまま掘る判断' }
+            { time: 45, label: '下穴を3つ先まで見据えた置き方', tags: ['下穴', '凝視'] },
+            { time: 120, label: '相殺外しによる意図的なリソース蓄積', tags: ['相殺外し', 'リソース'] },
+            { time: 240, label: 'Iミノを温存したまま掘る判断', tags: ['掘り', '判断'] }
         ]
     }
 ];
