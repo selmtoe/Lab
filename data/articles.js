@@ -2,10 +2,18 @@ window.LAB_ARTICLES = [
     {
         id: 'advent-2025',
         date: '2025-12-10',
-        title: 'テトリスにおける「座学」と「実技」の融合（アドカレ記事）',
-        tags: ['思考', 'マインドセット', 'シミュレータ'],
-        description: 'テトリスの上達法について、座学と実技の比率から考察したnote記事。',
-        externalUrl: 'https://note.com/noted_intai2110/n/na8dfea1eb5e2' // 外部リンクの場合はこれを書く
+        title: '上達のための「座学」の重要性と、シミュレータを自作してレート3600を達成した話',
+        tags: ['座学', '自分語り', 'シミュレータ'],
+        description: 'アドカレ2025の記事',
+        externalUrl: 'https://note.com/noted_intai2110/n/na57cebd775ad'
+    },
+    {
+        id: 'advent-2025-sub',
+        date: '2025-12-01',
+        title: '自作シミュレータの機能紹介',
+        tags: ['シミュレータ'],
+        description: 'アドカレ2025のおまけ記事',
+        externalUrl: 'https://note.com/noted_intai2110/n/na8dfea1eb5e2'
     },
     {
         id: 'math-resource-theory',
@@ -44,6 +52,7 @@ TSDを作るには、まず「Tの字」が入る窪みを作り、その上に*
         `
     }
 ];
+
 
 
 
