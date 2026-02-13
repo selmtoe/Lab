@@ -19,7 +19,7 @@
         --accent-color: #2cb696; /* note風の落ち着いたグリーン */
         --link-color: #1a73e8;
         --font-main: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-        --max-width: 800px; /* 読みやすい横幅に制限 */
+        --max-width: 800px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -136,6 +136,8 @@
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
+    
+    /* Tags */
     .tag {
         display: inline-block;
         padding: 2px 10px;
@@ -144,6 +146,12 @@
         color: var(--text-muted);
         border-radius: 100px;
         margin: 0 6px 6px 0;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s;
+    }
+    .tag:hover {
+        background-color: var(--accent-color);
+        color: #fff;
     }
 
     /* Article Reader */
@@ -225,6 +233,7 @@
             <a class="nav-item" onclick="router('articles')">Articles</a>
             <a class="nav-item" onclick="router('videos')">Videos</a>
             <a class="nav-item" onclick="router('tetofu')">Tetofu</a>
+            <a class="nav-item" onclick="router('tags')">Tags</a>
         </nav>
     </div>
 </header>
@@ -245,6 +254,9 @@
     let ytPlayers = {};
     function onYouTubeIframeAPIReady() { /* 動的生成のため空 */ }
 
+    // タグHTML生成ヘルパー（クリックで検索へ）
+    const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
+
     // --- ルーティング ---
     const mainView = document.getElementById('main-view');
     function router(page, id = null) {
@@ -260,25 +272,40 @@
             case 'articles': id ? renderArticleDetail(id) : renderArticleList(); break;
             case 'videos': renderVideos(); break;
             case 'tetofu': renderTetofu(); break;
+            case 'tags': id ? renderTagDetail(id) : renderTagList(); break;
         }
     }
 
     // --- UI レンダリング ---
 
-    // 1. DASHBOARD (最新情報)
+    // 1. DASHBOARD (最新情報 + 外部リンク)
     function renderDashboard() {
-        mainView.innerHTML = `<h2 class="section-title">最新のノート</h2><div class="list-container" id="dash-list"></div>`;
+        // 静的HTML部分を先にセット
+        mainView.innerHTML = `
+            <h2 class="section-title">最新のノート</h2>
+            <div class="list-container" id="dash-list"></div>
+            
+            <h2 class="section-title" style="margin-top: 60px;">ツールへのリンク</h2>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <a href="https://selmtoe.github.io/Tetris_Simulator/" target="_blank" class="btn-outline">シミュレータを開く ↗</a>
+                <a href="https://selmtoe.github.io/Tetris_Simulator/F/index.html" target="_blank" class="btn-outline">譜面エディタを開く ↗</a>
+            </div>
+        `;
+
         const list = document.getElementById('dash-list');
         
+        // 最新記事・動画・テト譜を混ぜてソート
         const recent = [
             ...getArticles().slice(0, 3).map(i => ({...i, type: '記事', action: () => router('articles', i.id)})),
             ...getVideos().slice(0, 2).map(i => ({...i, type: '動画', action: () => router('videos')})),
             ...getTetofu().slice(0, 2).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')}))
         ].sort((a,b) => new Date(b.date) - new Date(a.date));
 
+        // カードを動的に生成して追加（イベントリスナーを維持するため）
         recent.forEach(item => {
             const card = document.createElement('div');
             card.className = 'card';
+            // 外部リンクがある場合はそちらを優先、なければSPA内遷移
             if (item.externalUrl) {
                 card.onclick = () => window.open(item.externalUrl, '_blank');
             } else {
@@ -291,15 +318,6 @@
             `;
             list.appendChild(card);
         });
-
-        // 外部リンク群
-        mainView.innerHTML += `
-            <h2 class="section-title" style="margin-top: 60px;">ツールへのリンク</h2>
-            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                <a href="https://selmtoe.github.io/Tetris_Simulator/" target="_blank" class="btn-outline">シミュレータを開く ↗</a>
-                <a href="https://selmtoe.github.io/Tetris_Simulator/F/index.html" target="_blank" class="btn-outline">譜面エディタを開く ↗</a>
-            </div>
-        `;
     }
 
     // 2. ARTICLES (記事一覧)
@@ -316,7 +334,7 @@
                 <div class="card-meta"><span>${article.date}</span> ${article.externalUrl ? '<span style="color:var(--text-muted)">外部リンク ↗</span>' : ''}</div>
                 <div class="card-title">${article.title}</div>
                 <div class="card-desc">${article.description || ''}</div>
-                <div>${(article.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                <div>${createTagHtml(article.tags)}</div>
             `;
             list.appendChild(card);
         });
@@ -332,7 +350,7 @@
                 <button class="btn-outline" onclick="router('articles')" style="margin-bottom: 24px;">← 記事一覧に戻る</button>
                 <div class="card-meta">${article.date}</div>
                 <h1 class="article-title">${article.title}</h1>
-                <div>${(article.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                <div>${createTagHtml(article.tags)}</div>
             </div>
             <div class="article-body">${article.content}</div>
         `;
@@ -368,7 +386,7 @@
             const playerId = `yt-player-${index}`;
             const container = document.createElement('div');
             container.className = 'card';
-            container.style.cursor = 'default'; // クリック遷移を無効化
+            container.style.cursor = 'default';
             container.style.transform = 'none'; container.style.boxShadow = 'none';
             container.style.border = '1px solid var(--border-color)';
             
@@ -390,7 +408,7 @@
             container.innerHTML = `
                 <div class="card-meta">${v.date}</div>
                 <h3 class="card-title">${v.title}</h3>
-                <div style="margin-bottom: 16px;">${(v.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                <div style="margin-bottom: 16px;">${createTagHtml(v.tags)}</div>
                 <div class="video-wrapper"><div id="${playerId}"></div></div>
                 ${timestampsHtml}
             `;
@@ -427,7 +445,76 @@
                 <div class="card-meta">${t.date}</div>
                 <div class="card-title">${t.title}</div>
                 <div class="card-desc">${t.notes || ''}</div>
-                <div>${(t.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}</div>
+                <div>${createTagHtml(t.tags)}</div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    // 6. TAGS (タグ一覧 & 検索結果)
+    function renderTagList() {
+        mainView.innerHTML = `<h2 class="section-title">タグ一覧</h2><div class="list-container" style="flex-direction:row; flex-wrap:wrap;" id="tag-cloud"></div>`;
+        const container = document.getElementById('tag-cloud');
+        
+        const allTags = {};
+        const collect = (items) => items.forEach(i => (i.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1));
+        
+        collect(getArticles());
+        collect(getTetofu());
+        
+        // 動画タグ＋タイムスタンプ内のタグも集計
+        getVideos().forEach(v => {
+            (v.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1);
+            (v.timestamps || []).forEach(ts => (ts.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1));
+        });
+
+        // 件数順にソートして表示
+        Object.entries(allTags).sort((a,b) => b[1] - a[1]).forEach(([tag, count]) => {
+            const el = document.createElement('span');
+            el.className = 'tag';
+            el.style.fontSize = '14px'; el.style.padding = '6px 14px';
+            el.innerHTML = `${tag} (${count})`;
+            el.onclick = () => router('tags', tag);
+            container.appendChild(el);
+        });
+    }
+
+    function renderTagDetail(tagName) {
+        mainView.innerHTML = `
+            <button class="btn-outline" onclick="router('tags')" style="margin-bottom: 24px;">← タグ一覧に戻る</button>
+            <h2 class="section-title">タグ: ${tagName}</h2>
+            <div class="list-container" id="tag-results"></div>
+        `;
+        const list = document.getElementById('tag-results');
+
+        // 全コンテンツから検索（タイムスタンプ内タグも含む）
+        const results = [
+            ...getArticles().filter(a => (a.tags || []).includes(tagName)).map(i => ({...i, type: '記事', action: () => router('articles', i.id)})),
+            ...getTetofu().filter(t => (t.tags || []).includes(tagName)).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')})),
+            ...getVideos().filter(v => {
+                const hasTag = (v.tags || []).includes(tagName);
+                const hasTsTag = (v.timestamps || []).some(ts => (ts.tags || []).includes(tagName));
+                return hasTag || hasTsTag;
+            }).map(i => ({...i, type: '動画', action: () => router('videos')}))
+        ].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        if(results.length === 0) {
+            list.innerHTML = `<div style="color:var(--text-muted);">該当するコンテンツはありません。</div>`;
+            return;
+        }
+
+        results.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            if (item.externalUrl) {
+                card.onclick = () => window.open(item.externalUrl, '_blank');
+            } else {
+                card.onclick = item.action;
+            }
+            card.innerHTML = `
+                <div class="card-meta"><span style="font-weight:bold; color:var(--accent-color);">${item.type}</span> <span>${item.date}</span></div>
+                <div class="card-title">${item.title}</div>
+                ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
             `;
             list.appendChild(card);
         });
