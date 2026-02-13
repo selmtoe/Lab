@@ -16,7 +16,8 @@
         --text-main: #222222;
         --text-muted: #737373;
         --border-color: #e5e5e5;
-        --accent-color: #2cb696; /* note風の落ち着いたグリーン */
+        --accent-color: #2cb696;
+        /* note風の落ち着いたグリーン */
         --link-color: #1a73e8;
         --font-main: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
         --max-width: 800px;
@@ -148,6 +149,8 @@
         margin: 0 6px 6px 0;
         cursor: pointer;
         transition: background-color 0.2s, color 0.2s;
+        position: relative;
+        z-index: 2;
     }
     .tag:hover {
         background-color: var(--accent-color);
@@ -208,7 +211,8 @@
         border-radius: 8px;
     }
     .timestamp-btn {
-        background: none; border: none; font-size: 15px; color: var(--text-main);
+        background: none; border: none; font-size: 15px;
+        color: var(--text-main);
         text-align: left; cursor: pointer; padding: 4px 0; display: flex; gap: 12px;
     }
     .timestamp-btn:hover { color: var(--accent-color); text-decoration: underline; }
@@ -216,9 +220,11 @@
 
     /* Utility */
     .btn-outline {
-        display: inline-block; padding: 8px 16px; border: 1px solid var(--border-color);
+        display: inline-block;
+        padding: 8px 16px; border: 1px solid var(--border-color);
         border-radius: 100px; color: var(--text-main); text-decoration: none; font-size: 14px;
-        transition: 0.2s; cursor: pointer; background: var(--surface-color);
+        transition: 0.2s; cursor: pointer;
+        background: var(--surface-color);
     }
     .btn-outline:hover { background: #f0f0f0; border-color: #dcdcdc; }
 </style>
@@ -255,22 +261,21 @@
     let ytPlayers = {};
     function onYouTubeIframeAPIReady() { /* 動的生成のため空 */ }
 
-    // タグHTML生成ヘルパー（クリックで検索へ）
-    const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
+    // タグHTML生成ヘルパー（クリックで検索へ）※親要素へのイベント伝播とデフォルト遷移を防ぐ
+    const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.preventDefault(); event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
 
     // --- ルーティング ---
-const mainView = document.getElementById('main-view');
-function router(page, id = null) {
-    const targetHash = id ? `${page}/${id}` : page;
-    if (decodeURIComponent(location.hash) !== '#' + targetHash) {
-        location.hash = targetHash;
-        return;
-    }
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const mainView = document.getElementById('main-view');
+    function router(page, id = null) {
+        const targetHash = id ? `${page}/${id}` : page;
+        if (decodeURIComponent(location.hash) !== '#' + targetHash) {
+            location.hash = targetHash;
+            return;
+        }
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
         const activeTab = document.querySelector(`.nav-item[onclick="router('${page}')"]`);
         if(activeTab) activeTab.classList.add('active');
-
 
         mainView.innerHTML = '';
         window.scrollTo({top: 0, behavior: 'smooth'});
@@ -278,7 +283,7 @@ function router(page, id = null) {
         switch(page) {
             case 'dashboard': renderDashboard(); break;
             case 'articles': id ? renderArticleDetail(id) : renderArticleList(); break;
-            case 'videos': renderVideos(); break;
+            case 'videos': id ? renderVideoDetail(id) : renderVideoList(); break;
             case 'tetofu': renderTetofu(); break;
             case 'tags': id ? renderTagDetail(id) : renderTagList(); break;
         }
@@ -288,7 +293,6 @@ function router(page, id = null) {
 
     // 1. DASHBOARD (最新情報 + 外部リンク)
     function renderDashboard() {
-        // 静的HTML部分を先にセット
         mainView.innerHTML = `
             <h2 class="section-title">最新のノート</h2>
             <div class="list-container" id="dash-list"></div>
@@ -299,21 +303,18 @@ function router(page, id = null) {
                 <a href="https://selmtoe.github.io/Tetris_Simulator/F/index.html" target="_blank" class="btn-outline">譜面エディタを開く ↗</a>
             </div>
         `;
-
         const list = document.getElementById('dash-list');
         
         // 最新記事・動画・テト譜を混ぜてソート
         const recent = [
             ...getArticles().slice(0, 3).map(i => ({...i, type: '記事', action: () => router('articles', i.id)})),
-            ...getVideos().slice(0, 2).map(i => ({...i, type: '動画', action: () => router('videos')})),
+            ...getVideos().slice(0, 2).map(i => ({...i, type: '動画', action: () => router('videos', i.id)})),
             ...getTetofu().slice(0, 2).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')}))
         ].sort((a,b) => new Date(b.date) - new Date(a.date));
 
-        // カードを動的に生成して追加（イベントリスナーを維持するため）
         recent.forEach(item => {
             const card = document.createElement('div');
             card.className = 'card';
-            // 外部リンクがある場合はそちらを優先、なければSPA内遷移
             if (item.externalUrl) {
                 card.onclick = () => window.open(item.externalUrl, '_blank');
             } else {
@@ -323,6 +324,7 @@ function router(page, id = null) {
                 <div class="card-meta"><span style="font-weight:bold; color:var(--accent-color);">${item.type}</span> <span>${item.date}</span></div>
                 <div class="card-title">${item.title}</div>
                 ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
+                <div>${createTagHtml(item.tags)}</div>
             `;
             list.appendChild(card);
         });
@@ -363,7 +365,6 @@ function router(page, id = null) {
             <div class="article-body">${marked.parse(article.content)}</div>
         `;
 
-
         // 関連記事のサジェスト（タグの共通数で計算）
         const related = getArticles()
             .filter(a => a.id !== id)
@@ -374,10 +375,13 @@ function router(page, id = null) {
         if(related.length > 0) {
             html += `<div class="related-section"><h3 style="font-size:18px; margin-bottom:16px;">関連記事</h3><div class="related-grid">`;
             related.forEach(r => {
+                // 外部リンク判定を追加
+                const clickAction = r.externalUrl ? `window.open('${r.externalUrl}', '_blank')` : `router('articles', '${r.id}')`;
+                const extLabel = r.externalUrl ? ' <span style="color:var(--text-muted); font-size:12px;">外部リンク ↗</span>' : '';
                 html += `
-                    <div class="card" onclick="router('articles', '${r.id}')" style="padding:16px;">
+                    <div class="card" onclick="${clickAction}" style="padding:16px;">
                         <div class="card-title" style="font-size:16px;">${r.title}</div>
-                        <div class="card-meta" style="margin:0;">${r.date}</div>
+                        <div class="card-meta" style="margin:0;">${r.date}${extLabel}</div>
                     </div>`;
             });
             html += `</div></div>`;
@@ -385,51 +389,71 @@ function router(page, id = null) {
         mainView.innerHTML = html;
     }
 
-    // 4. VIDEOS (YouTube動画・タイムスタンプ)
-    function renderVideos() {
+    // 4. VIDEOS (動画一覧)
+    function renderVideoList() {
         mainView.innerHTML = `<h2 class="section-title">動画研究</h2><div class="list-container" id="video-list"></div>`;
         const list = document.getElementById('video-list');
-        ytPlayers = {}; 
 
-        getVideos().forEach((v, index) => {
-            const playerId = `yt-player-${index}`;
-            const container = document.createElement('div');
-            container.className = 'card';
-            container.style.cursor = 'default';
-            container.style.transform = 'none'; container.style.boxShadow = 'none';
-            container.style.border = '1px solid var(--border-color)';
+        getVideos().forEach(v => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => router('videos', v.id); // 詳細ページへの遷移
             
-            let timestampsHtml = '';
-            if(v.timestamps && v.timestamps.length > 0) {
-                timestampsHtml = `<div class="timestamp-list">`;
-                v.timestamps.forEach(ts => {
-                    const m = Math.floor(ts.time / 60);
-                    const s = String(ts.time % 60).padStart(2, '0');
-                    timestampsHtml += `
-                        <button class="timestamp-btn" onclick="seekVideo('${playerId}', ${ts.time})">
-                            <span class="time-badge">${m}:${s}</span>
-                            <span>${ts.label}</span>
-                        </button>`;
-                });
-                timestampsHtml += `</div>`;
-            }
-
-            container.innerHTML = `
+            card.innerHTML = `
                 <div class="card-meta">${v.date}</div>
-                <h3 class="card-title">${v.title}</h3>
-                <div style="margin-bottom: 16px;">${createTagHtml(v.tags)}</div>
-                <div class="video-wrapper"><div id="${playerId}"></div></div>
-                ${timestampsHtml}
+                <div class="card-title">${v.title}</div>
+                <div>${createTagHtml(v.tags)}</div>
             `;
-            list.appendChild(container);
+            list.appendChild(card);
+        });
+    }
 
+    // 4-2. VIDEO DETAIL (動画詳細)
+    function renderVideoDetail(id) {
+        const v = getVideos().find(video => video.id === id);
+        if(!v) return router('videos');
+
+        ytPlayers = {}; 
+        const playerId = `yt-player-detail`;
+
+        let timestampsHtml = '';
+        if(v.timestamps && v.timestamps.length > 0) {
+            timestampsHtml = `<div class="timestamp-list">`;
+            v.timestamps.forEach(ts => {
+                const m = Math.floor(ts.time / 60);
+                const s = String(ts.time % 60).padStart(2, '0');
+                timestampsHtml += `
+                    <button class="timestamp-btn" onclick="seekVideo('${playerId}', ${ts.time})">
+                        <span class="time-badge">${m}:${s}</span>
+                        <span>${ts.label}</span>
+                    </button>`;
+            });
+            timestampsHtml += `</div>`;
+        }
+
+        mainView.innerHTML = `
+            <div class="article-header">
+                <button class="btn-outline" onclick="router('videos')" style="margin-bottom: 24px;">← 動画一覧に戻る</button>
+                <div class="card-meta">${v.date}</div>
+                <h1 class="article-title">${v.title}</h1>
+                <div>${createTagHtml(v.tags)}</div>
+            </div>
+            <div class="video-wrapper" style="border: 1px solid var(--border-color); border-radius: 8px;"><div id="${playerId}"></div></div>
+            ${timestampsHtml}
+        `;
+
+        // YouTube Playerの確実な初期化
+        const initYT = () => {
             if (window.YT && YT.Player) {
                 ytPlayers[playerId] = new YT.Player(playerId, {
                     videoId: v.youtubeId,
                     playerVars: { 'rel': 0 }
                 });
+            } else {
+                setTimeout(initYT, 100);
             }
-        });
+        };
+        initYT();
     }
 
     window.seekVideo = function(playerId, seconds) {
@@ -446,12 +470,12 @@ function router(page, id = null) {
         const list = document.getElementById('tetofu-list');
         
         getTetofu().forEach(t => {
-            const card = document.createElement('a');
-            card.href = t.url;
-            card.target = '_blank';
+            // <a>タグをやめて<div>にすることで、タグクリック時のイベントキャンセリングを機能させる
+            const card = document.createElement('div');
             card.className = 'card';
+            card.onclick = () => window.open(t.url, '_blank');
             card.innerHTML = `
-                <div class="card-meta">${t.date}</div>
+                <div class="card-meta"><span>${t.date}</span> <span style="color:var(--text-muted)">外部リンク ↗</span></div>
                 <div class="card-title">${t.title}</div>
                 <div class="card-desc">${t.notes || ''}</div>
                 <div>${createTagHtml(t.tags)}</div>
@@ -467,7 +491,7 @@ function router(page, id = null) {
         
         const allTags = {};
         const collect = (items) => items.forEach(i => (i.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1));
-        
+
         collect(getArticles());
         collect(getTetofu());
         
@@ -504,7 +528,7 @@ function router(page, id = null) {
                 const hasTag = (v.tags || []).includes(tagName);
                 const hasTsTag = (v.timestamps || []).some(ts => (ts.tags || []).includes(tagName));
                 return hasTag || hasTsTag;
-            }).map(i => ({...i, type: '動画', action: () => router('videos')}))
+            }).map(i => ({...i, type: '動画', action: () => router('videos', i.id)}))
         ].sort((a,b) => new Date(b.date) - new Date(a.date));
 
         if(results.length === 0) {
@@ -524,6 +548,7 @@ function router(page, id = null) {
                 <div class="card-meta"><span style="font-weight:bold; color:var(--accent-color);">${item.type}</span> <span>${item.date}</span></div>
                 <div class="card-title">${item.title}</div>
                 ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
+                <div>${createTagHtml(item.tags)}</div>
             `;
             list.appendChild(card);
         });
@@ -538,8 +563,6 @@ function router(page, id = null) {
         const [page, id] = decodeURIComponent(location.hash.slice(1)).split('/');
         router(page || 'dashboard', id);
     }, 100);
-
-
 </script>
 </body>
 </html>
