@@ -3,563 +3,392 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TETRIS LAB - Advanced Research</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@300;500;700&display=swap" rel="stylesheet">
+<title>TETRIS LAB - Personal Training Base</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://www.youtube.com/iframe_api"></script>
+
 <style>
-    /* --- 高級感のあるデザイン定義 --- */
     :root {
-        --bg-main: #0a0a12;
-        --bg-panel: rgba(30, 30, 45, 0.7);
-        --accent: #6a6aff;
-        --accent-glow: rgba(106, 106, 255, 0.4);
-        --text-main: #f0f0f0;
-        --text-sub: #a0a0b0;
-        --border: 1px solid rgba(255, 255, 255, 0.1);
-        --glass: blur(12px);
+        --bg-color: #05050A;
+        --card-bg: rgba(15, 15, 24, 0.6);
+        --accent-color: #00E5FF;
+        --accent-glow: rgba(0, 229, 255, 0.4);
+        --text-main: #F0F0F5;
+        --text-dim: #8B8B9E;
+        --border-color: rgba(75, 75, 124, 0.4);
+        --font-display: 'Orbitron', sans-serif;
+        --font-ui: 'Noto Sans JP', sans-serif;
     }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-        background-color: var(--bg-main);
+        background-color: var(--bg-color);
         color: var(--text-main);
-        font-family: 'Noto Sans JP', sans-serif;
-        margin: 0;
+        font-family: var(--font-ui);
         overflow-x: hidden;
-        background-image: 
-            radial-gradient(circle at 10% 20%, rgba(106, 106, 255, 0.15) 0%, transparent 40%),
-            radial-gradient(circle at 90% 80%, rgba(0, 255, 255, 0.1) 0%, transparent 40%);
-        background-attachment: fixed;
+        line-height: 1.6;
+    }
+    h1, h2, h3, .orbitron { font-family: var(--font-display); letter-spacing: 1px; }
+    
+    /* Background Effect */
+    #bg-canvas {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        z-index: -1; opacity: 0.15; pointer-events: none;
     }
 
-    /* レイアウト */
+    /* Layout */
     .container {
-        display: flex;
-        min-height: 100vh;
+        max-width: 1300px; margin: 0 auto; padding: 30px 20px;
+        display: grid; grid-template-columns: 260px 1fr; gap: 40px; min-height: 100vh;
     }
 
-    /* サイドバー */
+    /* Sidebar */
     .sidebar {
-        width: 260px;
-        background: var(--bg-panel);
-        backdrop-filter: var(--glass);
-        border-right: var(--border);
-        padding: 30px 20px;
-        position: sticky;
-        top: 0;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        flex-shrink: 0;
-        z-index: 100;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        padding: 30px 20px; border-radius: 16px;
+        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        height: fit-content; position: sticky; top: 30px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
-
     .logo {
-        font-family: 'Orbitron', sans-serif;
-        font-size: 28px;
-        font-weight: 700;
-        color: #fff;
-        text-shadow: 0 0 15px var(--accent);
-        margin-bottom: 40px;
-        letter-spacing: 2px;
-        cursor: pointer;
+        font-size: 28px; font-weight: 700; color: var(--accent-color);
+        margin-bottom: 40px; text-shadow: 0 0 15px var(--accent-glow);
+        cursor: pointer; text-align: center;
     }
-
     .nav-item {
-        padding: 15px;
-        margin-bottom: 8px;
-        color: var(--text-sub);
-        cursor: pointer;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-        font-family: 'Orbitron', sans-serif;
-        letter-spacing: 1px;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        display: flex; align-items: center; padding: 14px 20px; margin-bottom: 12px;
+        color: var(--text-dim); text-decoration: none; border-radius: 8px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid transparent; cursor: pointer; font-family: var(--font-display);
     }
-
     .nav-item:hover, .nav-item.active {
-        background: rgba(255, 255, 255, 0.05);
-        color: #fff;
-        border-left: 3px solid var(--accent);
-        box-shadow: 0 0 20px rgba(106, 106, 255, 0.1);
+        background: rgba(0, 229, 255, 0.1);
+        border-color: var(--accent-color); color: var(--accent-color);
+        box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
     }
-
-    /* メインエリア */
-    .main-content {
-        flex: 1;
-        padding: 40px;
-        overflow-y: auto;
-    }
-
-    h2.section-title {
-        font-family: 'Orbitron', sans-serif;
-        font-size: 32px;
-        border-bottom: 2px solid var(--accent);
-        padding-bottom: 10px;
-        margin-bottom: 30px;
-        display: inline-block;
-        color: #fff;
+    
+    /* Main Content */
+    .main-content { padding-bottom: 50px; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .section-title {
+        font-size: 32px; margin-bottom: 30px; color: #fff;
+        border-bottom: 2px solid var(--accent-color);
+        padding-bottom: 10px; display: inline-block;
         text-shadow: 0 0 10px var(--accent-glow);
     }
 
-    /* カードグリッド */
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 25px;
-    }
-
+    /* Cards */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
     .card {
-        background: var(--bg-panel);
-        border: var(--border);
-        border-radius: 12px;
-        padding: 25px;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
+        background: var(--card-bg); border: 1px solid var(--border-color);
+        border-radius: 12px; padding: 24px; transition: all 0.3s;
+        backdrop-filter: blur(8px); cursor: pointer; display: flex; flex-direction: column;
     }
-
-    .card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; width: 4px; height: 100%;
-        background: var(--accent);
-        opacity: 0;
-        transition: 0.3s;
-    }
-
     .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        border-color: var(--accent);
+        transform: translateY(-5px); border-color: var(--accent-color);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6), 0 0 15px var(--accent-glow);
     }
-
-    .card:hover::before { opacity: 1; }
-
-    .card-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 15px;
-        font-size: 12px;
-        color: var(--text-sub);
-    }
-
+    .card-meta { display: flex; justify-content: space-between; font-size: 0.85em; color: var(--text-dim); margin-bottom: 12px; }
+    .card-title { font-size: 1.3em; font-weight: bold; margin-bottom: 12px; color: #fff; line-height: 1.4; }
     .tag {
-        background: rgba(106, 106, 255, 0.2);
-        color: #ccccff;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 10px;
-        margin-right: 5px;
+        display: inline-block; padding: 4px 10px; font-size: 0.75em;
+        border-radius: 4px; background: rgba(0, 229, 255, 0.15); color: var(--accent-color);
+        border: 1px solid rgba(0, 229, 255, 0.3); margin: 0 6px 6px 0;
     }
 
-    .card-title {
-        font-size: 18px;
-        font-weight: 700;
-        margin-bottom: 10px;
-        line-height: 1.4;
-        color: #fff;
+    /* Article Reader */
+    .article-header { margin-bottom: 30px; }
+    .article-title { font-size: 2.5em; color: #fff; margin-bottom: 15px; }
+    .article-body {
+        background: var(--card-bg); border: 1px solid var(--border-color);
+        border-radius: 12px; padding: 40px; font-size: 1.1em;
     }
+    .article-body iframe { width: 100%; height: 600px; border: none; border-radius: 8px; margin: 20px 0; background: #000; }
+    
+    /* Related Articles */
+    .related-section { margin-top: 50px; border-top: 1px solid var(--border-color); padding-top: 30px; }
 
-    .card-desc {
-        font-size: 14px;
-        color: var(--text-sub);
-        margin-bottom: 20px;
-        line-height: 1.6;
+    /* Video Embed */
+    .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; border-radius: 8px; overflow: hidden; margin-bottom: 15px; background: #000;}
+    .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+    .timestamp-list { display: flex; flex-direction: column; gap: 8px; }
+    .timestamp-btn {
+        background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-main);
+        padding: 8px 12px; border-radius: 6px; cursor: pointer; text-align: left; transition: 0.2s;
+        display: flex; gap: 15px;
     }
+    .timestamp-btn:hover { background: rgba(0, 229, 255, 0.1); border-color: var(--accent-color); }
+    .time-badge { color: var(--accent-color); font-family: var(--font-display); font-weight: bold; }
 
-    /* ボタン */
+    /* Buttons */
     .btn {
-        display: inline-block;
-        background: transparent;
-        color: var(--accent);
-        border: 1px solid var(--accent);
-        padding: 8px 20px;
-        border-radius: 20px;
-        font-size: 12px;
-        text-decoration: none;
-        transition: 0.3s;
-        cursor: pointer;
-        font-family: 'Orbitron', sans-serif;
+        display: inline-block; padding: 10px 20px; font-family: var(--font-display);
+        background: transparent; border: 1px solid var(--accent-color); color: var(--accent-color);
+        text-decoration: none; border-radius: 6px; transition: 0.3s; cursor: pointer; text-align: center;
     }
-
-    .btn:hover {
-        background: var(--accent);
-        color: #fff;
-        box-shadow: 0 0 15px var(--accent-glow);
-    }
-
-    /* 記事ビュー (詳細表示) */
-    .article-view {
-        background: var(--bg-panel);
-        border-radius: 15px;
-        padding: 40px;
-        border: var(--border);
-    }
-    
-    .article-meta {
-        color: var(--text-sub);
-        margin-bottom: 20px;
-        display: flex;
-        gap: 15px;
-    }
-
-    .iframe-container {
-        width: 100%;
-        height: 80vh; /* 画面の80% */
-        border: none;
-        border-radius: 8px;
-        background: #000;
-        margin-bottom: 30px;
-    }
-
-    /* 関連記事セクション */
-    .related-section {
-        margin-top: 50px;
-        border-top: 1px solid rgba(255,255,255,0.1);
-        padding-top: 20px;
-    }
-
-    /* YouTube Timestamp Buttons */
-    .timestamp-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 15px;
-    }
-    
-    .ts-btn {
-        background: rgba(255,255,255,0.1);
-        border: none;
-        color: #fff;
-        padding: 5px 10px;
-        border-radius: 4px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: 0.2s;
-    }
-    .ts-btn:hover { background: var(--accent); }
-
-    /* モバイル対応 */
-    @media (max-width: 768px) {
-        .container { flex-direction: column; }
-        .sidebar { width: 100%; height: auto; position: relative; padding: 15px; }
-        .nav-item { display: inline-block; margin-right: 10px; }
-        .main-content { padding: 20px; }
-    }
+    .btn:hover { background: var(--accent-color); color: #000; font-weight: bold; }
 </style>
 </head>
 <body>
 
+<canvas id="bg-canvas"></canvas>
+
 <div class="container">
     <aside class="sidebar">
-        <div class="logo" onclick="app.router('dashboard')">TETRIS LAB</div>
+        <div class="logo orbitron" onclick="router('dashboard')">TETRIS LAB</div>
         <nav>
-            <div class="nav-item active" onclick="app.router('dashboard')">DASHBOARD</div>
-            <div class="nav-item" onclick="app.router('articles')">ARTICLES</div>
-            <div class="nav-item" onclick="app.router('videos')">VIDEOS</div>
-            <div class="nav-item" onclick="app.router('tetofu')">TETOFU (FUMEN)</div>
+            <a class="nav-item active" onclick="router('dashboard')">DASHBOARD</a>
+            <a class="nav-item" onclick="router('articles')">ARTICLES</a>
+            <a class="nav-item" onclick="router('videos')">VIDEOS</a>
+            <a class="nav-item" onclick="router('tetofu')">TETOFU</a>
         </nav>
-        
-        <div style="margin-top:auto; padding-top:20px; border-top:var(--border);">
-            <div class="nav-item" onclick="window.open('tools/simulator/index.html')">Simulator ↗</div>
-            <div class="nav-item" onclick="window.open('tools/editor/index.html')">Fumen Editor ↗</div>
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <div style="font-size: 0.8em; color: var(--text-dim); margin-bottom: 10px; font-family: var(--font-display);">EXTERNAL TOOLS</div>
+            <a href="https://selmtoe.github.io/Tetris_Simulator/" target="_blank" class="nav-item" style="padding: 8px 15px; font-size: 0.9em;">Simulator ↗</a>
+            <a href="https://selmtoe.github.io/Tetris_Simulator/F/index.html" target="_blank" class="nav-item" style="padding: 8px 15px; font-size: 0.9em;">Fumen Editor ↗</a>
         </div>
     </aside>
 
-    <main id="app-root" class="main-content">
-        </main>
+    <main id="main-view" class="main-content"></main>
 </div>
 
+<script src="data/articles.js"></script>
+<script src="data/videos.js"></script>
+<script src="data/tetofu.js"></script>
+
 <script>
-    // --- 1. データ管理 (本来は外部ファイル js/data.js 推奨) ---
-    const DB = {
-        articles: [
-            {
-                id: 'theory-resource',
-                title: '対戦テトリスにおけるリソース理論：マクロ的動態分析',
-                date: '2025-12-10',
-                tags: ['Theory', 'Math', 'Strategy'],
-                type: 'internal', // 内部記事
-                contentUrl: 'articles/math.html', // 外部HTMLをiframeで呼ぶか、text本文を入れる
-                description: '盤面のブロック数を「リソース」と定義し、相殺と循環のメカニズムを数学的に解明する。'
-            },
-            {
-                id: 'practice-vs-study',
-                title: '「座学」と「実技」の融合：なぜレート3200で停滞したか',
-                date: '2025-12-12',
-                tags: ['Column', 'Mindset'],
-                type: 'external', // 外部リンク
-                link: 'https://note.com/your_note_link',
-                description: '2000時間の実技偏重が招いた停滞と、シミュレータ開発によるブレイクスルーの記録。'
-            },
-            {
-                id: 'simulator-dev',
-                title: '自作シミュレータ開発日誌',
-                date: '2025-10-01',
-                tags: ['Dev', 'Tool', 'Simulator'],
-                type: 'internal_iframe', // シミュレータ自体を埋め込んで解説する記事
-                iframeUrl: 'tools/simulator/index.html',
-                description: 'このラボの中核となるシミュレータの動作テストと解説。'
+    // --- 背景のエフェクト（サイバーパンクパーティクル） ---
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height, particles = [];
+    function initCanvas() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        particles = Array.from({length: 80}, () => ({
+            x: Math.random() * width, y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
+            size: Math.random() * 2, alpha: Math.random() * 0.5
+        }));
+    }
+    window.addEventListener('resize', initCanvas);
+    initCanvas();
+    function animate() {
+        ctx.clearRect(0, 0, width, height);
+        particles.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
+                p.x = Math.random() * width; p.y = Math.random() * height;
             }
-        ],
-        videos: [
-            {
-                id: 'vid001',
-                title: 'Kazu vs Amemiya - Top Rank Match Analysis',
-                date: '2025-11-20',
-                tags: ['Replay', 'God Match'],
-                youtubeId: 'DummyID', // YoutubeのID
-                timestamps: [
-                    { time: 65, label: '1:05 - 驚異の凝視' },
-                    { time: 180, label: '3:00 - リソース管理の極み' },
-                    { time: 420, label: '7:00 - 決着の瞬間' }
-                ],
-                description: 'リソース理論の観点から見た、トッププレイヤーの相殺管理。'
-            }
-        ],
-        tetofu: [
-            {
-                id: 'tf001',
-                title: 'Iミノ上部最適化パターン',
-                date: '2025-12-15',
-                tags: ['Technique', 'Fumen'],
-                code: 'v115@vhAAgH...', // ここにテト譜コード
-                description: 'Twitterで話題になった、Iミノを無駄にしないための積み方クイズ。'
-            },
-            {
-                id: 'tf002',
-                title: '中開けREN：青エリアと赤エリア',
-                date: '2025-12-14',
-                tags: ['REN', 'Theory'],
-                code: 'v115@vhAAgH...', 
-                description: '中開けにおける「死なないための空け方」の解説譜面。'
-            }
-        ]
-    };
+            ctx.fillStyle = `rgba(0, 229, 255, ${p.alpha})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+        });
+        requestAnimationFrame(animate);
+    }
+    animate();
 
-    // --- 2. アプリケーションロジック ---
-    const app = {
-        root: document.getElementById('app-root'),
-        
-        // 関連記事を見つけるロジック
-        findRelated: (currentTags, currentId, allItems) => {
-            if(!currentTags) return [];
-            return allItems
-                .filter(item => item.id !== currentId) // 自分自身は除く
-                .map(item => ({
-                    item,
-                    score: item.tags.filter(tag => currentTags.includes(tag)).length
-                }))
-                .filter(match => match.score > 0)
-                .sort((a, b) => b.score - a.score) // 関連度順
-                .slice(0, 3) // 上位3つ
-                .map(match => match.item);
-        },
+    // --- データ取得ヘルパー ---
+    const getArticles = () => (window.LAB_ARTICLES || []).sort((a,b) => new Date(b.date) - new Date(a.date));
+    const getVideos = () => (window.LAB_VIDEOS || []).sort((a,b) => new Date(b.date) - new Date(a.date));
+    const getTetofu = () => (window.LAB_TETOFU || []).sort((a,b) => new Date(b.date) - new Date(a.date));
 
-        // ルーティング
-        router: (page, id = null) => {
-            // ナビゲーションのハイライト更新
-            document.querySelectorAll('.nav-item').forEach(el => {
-                el.classList.toggle('active', el.textContent.includes(page.toUpperCase()));
-            });
+    // YouTube API連携用
+    let ytPlayers = {};
+    function onYouTubeIframeAPIReady() { /* Playerは動的に生成 */ }
 
-            window.scrollTo(0,0);
-            
-            switch(page) {
-                case 'dashboard': app.renderDashboard(); break;
-                case 'articles': 
-                    if(id) app.renderArticleDetail(id);
-                    else app.renderList('articles', DB.articles); 
-                    break;
-                case 'videos': app.renderVideoList(DB.videos); break;
-                case 'tetofu': app.renderTetofuList(DB.tetofu); break;
-            }
-        },
+    // --- ルーティング ---
+    const mainView = document.getElementById('main-view');
+    function router(page, id = null) {
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        const activeTab = document.querySelector(`.nav-item[onclick="router('${page}')"]`);
+        if(activeTab) activeTab.classList.add('active');
 
-        // ダッシュボード描画
-        renderDashboard: () => {
-            app.root.innerHTML = `<h2 class="section-title">LATEST RESEARCH</h2>`;
-            const grid = document.createElement('div');
-            grid.className = 'grid';
+        mainView.innerHTML = '';
+        window.scrollTo({top: 0, behavior: 'smooth'});
 
-            // 各カテゴリの最新を表示
-            const latest = [
-                ...DB.articles.slice(0, 2).map(i => ({...i, cat:'ARTICLE', page:'articles'})),
-                ...DB.videos.slice(0, 1).map(i => ({...i, cat:'VIDEO', page:'videos'})),
-                ...DB.tetofu.slice(0, 1).map(i => ({...i, cat:'TETOFU', page:'tetofu'}))
-            ];
-
-            latest.forEach(item => {
-                grid.innerHTML += app.createCardHtml(item);
-            });
-            app.root.appendChild(grid);
-        },
-
-        // リスト描画（記事用）
-        renderList: (type, data) => {
-            app.root.innerHTML = `<h2 class="section-title">${type.toUpperCase()} ARCHIVE</h2>`;
-            const grid = document.createElement('div');
-            grid.className = 'grid';
-            data.forEach(item => {
-                grid.innerHTML += app.createCardHtml({...item, cat: type.slice(0,-1).toUpperCase(), page: type});
-            });
-            app.root.appendChild(grid);
-        },
-
-        // 動画リスト描画（特別仕様）
-        renderVideoList: (data) => {
-            app.root.innerHTML = `<h2 class="section-title">VIDEO ANALYSIS</h2>`;
-            const container = document.createElement('div');
-            
-            data.forEach(video => {
-                const el = document.createElement('div');
-                el.className = 'article-view';
-                el.style.marginBottom = '30px';
-                
-                // YouTube Embed
-                const embedUrl = `https://www.youtube.com/embed/${video.youtubeId}?enablejsapi=1`;
-                
-                let timestampHtml = '';
-                video.timestamps.forEach(ts => {
-                    timestampHtml += `<button class="ts-btn" onclick="app.seekVideo('${video.id}', ${ts.time})">▶ ${ts.label}</button>`;
-                });
-
-                el.innerHTML = `
-                    <div class="card-title">${video.title}</div>
-                    <div class="article-meta">
-                        <span>${video.date}</span>
-                        <div>${video.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
-                    </div>
-                    <div class="iframe-container" style="height: 400px;">
-                        <iframe id="iframe-${video.id}" src="${embedUrl}" allowfullscreen></iframe>
-                    </div>
-                    <div class="timestamp-container">${timestampHtml}</div>
-                    <p class="card-desc" style="margin-top:15px;">${video.description}</p>
-                `;
-                container.appendChild(el);
-            });
-            app.root.appendChild(container);
-        },
-
-        // テト譜リスト描画
-        renderTetofuList: (data) => {
-            app.root.innerHTML = `<h2 class="section-title">TETOFU LIBRARY</h2>`;
-            const grid = document.createElement('div');
-            grid.className = 'grid';
-            
-            data.forEach(item => {
-                // テト譜エディタへのリンク生成 (Base64部分のみ抽出を想定)
-                // 実際はあなたのエディタのURLに合わせて調整してください
-                const editorUrl = `tools/editor/index.html#${item.code}`; // 仮
-                
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="card-header">
-                        <span class="tag">FUMEN</span>
-                        <span>${item.date}</span>
-                    </div>
-                    <div class="card-title">${item.title}</div>
-                    <div style="margin-bottom:10px;">
-                        ${item.tags.map(t => `<span class="tag">${t}</span>`).join('')}
-                    </div>
-                    <p class="card-desc">${item.description}</p>
-                    <a href="${editorUrl}" target="_blank" class="btn">OPEN IN EDITOR</a>
-                `;
-                grid.appendChild(card);
-            });
-            app.root.appendChild(grid);
-        },
-
-        // 記事詳細描画
-        renderArticleDetail: (id) => {
-            const article = DB.articles.find(a => a.id === id);
-            if(!article) return;
-
-            // 関連記事取得
-            const related = app.findRelated(article.tags, article.id, DB.articles);
-
-            let contentHtml = '';
-            if(article.type === 'internal_iframe') {
-                contentHtml = `<iframe src="${article.iframeUrl}" class="iframe-container"></iframe>`;
-            } else if (article.type === 'external') {
-                window.open(article.link, '_blank');
-                app.router('articles'); // 戻る
-                return;
-            } else {
-                // 通常の内部記事テキストなどの場合
-                contentHtml = `<div style="line-height:1.8; color:#ddd;">${article.description}<br><br>(ここに詳細な本文が入ります。Markdownパーサーを入れるとより良くなります)</div>`;
-            }
-
-            // 関連記事HTML生成
-            let relatedHtml = '';
-            if(related.length > 0) {
-                relatedHtml = `<div class="related-section"><h3 style="color:#fff; font-family:'Orbitron'">RELATED NOTES</h3><div class="grid">`;
-                related.forEach(r => {
-                    relatedHtml += app.createCardHtml({...r, cat:'ARTICLE', page:'articles'});
-                });
-                relatedHtml += `</div></div>`;
-            }
-
-            app.root.innerHTML = `
-                <button onclick="app.router('articles')" class="btn" style="margin-bottom:20px;">← BACK TO LIST</button>
-                <div class="article-view">
-                    <h1 style="font-size:2rem; margin-bottom:10px; color:#fff;">${article.title}</h1>
-                    <div class="article-meta">
-                        <span>${article.date}</span>
-                        <div>${article.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
-                    </div>
-                    ${contentHtml}
-                    ${relatedHtml}
-                </div>
-            `;
-        },
-
-        // カードHTML生成ヘルパー
-        createCardHtml: (item) => {
-            // 内部記事ならonclickでルーターを呼ぶ、外部ならtarget blank
-            let action = '';
-            if (item.type === 'external') {
-                action = `href="${item.link}" target="_blank"`;
-            } else if (item.page === 'videos' || item.page === 'tetofu') {
-                action = `onclick="app.router('${item.page}')"`; // 一覧へ飛ぶ
-            } else {
-                action = `onclick="app.router('${item.page}', '${item.id}')"`;
-            }
-
-            return `
-                <div class="card" style="cursor:pointer;" ${item.type !== 'external' ? `onclick="app.router('${item.page}', '${item.id || ''}')"` : ''}>
-                    <div class="card-header">
-                        <span class="tag">${item.cat}</span>
-                        <span>${item.date}</span>
-                    </div>
-                    <div class="card-title">${item.title}</div>
-                    <div style="margin-bottom:10px;">
-                        ${item.tags.map(t => `<span class="tag">${t}</span>`).join('')}
-                    </div>
-                    <p class="card-desc">${item.description}</p>
-                    <a ${action} class="btn">VIEW DETAIL</a>
-                </div>
-            `;
-        },
-
-        // 動画シーク用
-        seekVideo: (id, time) => {
-            const iframe = document.getElementById(`iframe-${id}`);
-            if(iframe) {
-                iframe.contentWindow.postMessage(JSON.stringify({
-                    event: 'command',
-                    func: 'seekTo',
-                    args: [time, true]
-                }), '*');
-            }
+        switch(page) {
+            case 'dashboard': renderDashboard(); break;
+            case 'articles': id ? renderArticleDetail(id) : renderArticleList(); break;
+            case 'videos': renderVideos(); break;
+            case 'tetofu': renderTetofu(); break;
         }
-    };
+    }
+
+    // --- UI レンダリング関数 ---
+
+    // 1. DASHBOARD
+    function renderDashboard() {
+        mainView.innerHTML = `<h2 class="section-title">LATEST UPDATES</h2><div class="grid" id="dash-grid"></div>`;
+        const grid = document.getElementById('dash-grid');
+        
+        // 最新記事2件、動画2件、テト譜2件をマージして表示
+        const recent = [
+            ...getArticles().slice(0, 2).map(i => ({...i, category: 'ARTICLE', action: () => router('articles', i.id)})),
+            ...getVideos().slice(0, 2).map(i => ({...i, category: 'VIDEO', action: () => router('videos')})),
+            ...getTetofu().slice(0, 2).map(i => ({...i, category: 'TETOFU', action: () => window.open(i.url, '_blank')}))
+        ].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        recent.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = item.action;
+            card.innerHTML = `
+                <div class="card-meta"><span>${item.category}</span><span>${item.date}</span></div>
+                <div class="card-title">${item.title}</div>
+                <div>${(item.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // 2. ARTICLES (一覧)
+    function renderArticleList() {
+        mainView.innerHTML = `<h2 class="section-title">RESEARCH ARTICLES</h2><div class="grid" id="article-grid"></div>`;
+        const grid = document.getElementById('article-grid');
+        
+        getArticles().forEach(article => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            if(article.externalUrl) {
+                card.onclick = () => window.open(article.externalUrl, '_blank');
+            } else {
+                card.onclick = () => router('articles', article.id);
+            }
+            
+            card.innerHTML = `
+                <div class="card-meta"><span>${article.externalUrl ? 'EXTERNAL' : 'INTERNAL'}</span><span>${article.date}</span></div>
+                <div class="card-title">${article.title}</div>
+                <p style="color:var(--text-dim); font-size:0.9em; margin-bottom:15px; flex-grow:1;">${article.description || ''}</p>
+                <div>${(article.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // 3. ARTICLE (詳細 & 関連記事)
+    function renderArticleDetail(id) {
+        const article = getArticles().find(a => a.id === id);
+        if(!article) return router('articles');
+
+        // HTMLインジェクション対応 (シミュレータ等のiframe展開を許可)
+        let html = `
+            <div class="article-header">
+                <button class="btn" onclick="router('articles')" style="margin-bottom: 20px;">← Back to Articles</button>
+                <div class="card-meta"><span>${article.date}</span></div>
+                <h1 class="article-title">${article.title}</h1>
+                <div>${(article.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+            </div>
+            <div class="article-body">${article.content}</div>
+        `;
+
+        // 関連記事のサジェスト（タグの共通数で計算）
+        const related = getArticles()
+            .filter(a => a.id !== id)
+            .map(a => {
+                const commonTags = a.tags.filter(t => article.tags.includes(t)).length;
+                return { ...a, score: commonTags };
+            })
+            .filter(a => a.score > 0)
+            .sort((a,b) => b.score - a.score)
+            .slice(0, 3);
+
+        if(related.length > 0) {
+            html += `<div class="related-section"><h3 class="section-title" style="font-size:24px;">RELATED</h3><div class="grid">`;
+            related.forEach(r => {
+                html += `
+                    <div class="card" onclick="router('articles', '${r.id}')">
+                        <div class="card-title" style="font-size:1.1em;">${r.title}</div>
+                        <div>${r.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                    </div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        mainView.innerHTML = html;
+    }
+
+    // 4. VIDEOS (YouTubeとタイムスタンプ)
+    function renderVideos() {
+        mainView.innerHTML = `<h2 class="section-title">VIDEO ANALYSIS</h2><div id="video-list"></div>`;
+        const list = document.getElementById('video-list');
+        ytPlayers = {}; // リセット
+
+        getVideos().forEach((v, index) => {
+            const playerId = `yt-player-${index}`;
+            const container = document.createElement('div');
+            container.className = 'card';
+            container.style.marginBottom = '30px';
+            container.style.display = 'block'; // grid除外
+            
+            let timestampsHtml = '';
+            if(v.timestamps && v.timestamps.length > 0) {
+                timestampsHtml = `<div class="timestamp-list" style="margin-top: 20px;">`;
+                v.timestamps.forEach(ts => {
+                    const m = Math.floor(ts.time / 60);
+                    const s = String(ts.time % 60).padStart(2, '0');
+                    timestampsHtml += `
+                        <button class="timestamp-btn" onclick="seekVideo('${playerId}', ${ts.time})">
+                            <span class="time-badge">${m}:${s}</span>
+                            <span>${ts.label}</span>
+                        </button>`;
+                });
+                timestampsHtml += `</div>`;
+            }
+
+            container.innerHTML = `
+                <div class="card-meta"><span>${v.date}</span></div>
+                <h3 class="card-title">${v.title}</h3>
+                <div>${(v.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                <div class="video-wrapper" style="margin-top: 15px;">
+                    <div id="${playerId}"></div>
+                </div>
+                ${timestampsHtml}
+            `;
+            list.appendChild(container);
+
+            // YouTube Playerの初期化
+            if (window.YT && YT.Player) {
+                ytPlayers[playerId] = new YT.Player(playerId, {
+                    videoId: v.youtubeId,
+                    playerVars: { 'rel': 0 }
+                });
+            }
+        });
+    }
+
+    // タイムスタンプからのシーク処理
+    window.seekVideo = function(playerId, seconds) {
+        const player = ytPlayers[playerId];
+        if (player && typeof player.seekTo === 'function') {
+            player.seekTo(seconds, true);
+            player.playVideo();
+        }
+    }
+
+    // 5. TETOFU
+    function renderTetofu() {
+        mainView.innerHTML = `<h2 class="section-title">TETOFU (譜面)</h2><div class="grid" id="tetofu-grid"></div>`;
+        const grid = document.getElementById('tetofu-grid');
+        
+        getTetofu().forEach(t => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-meta"><span>${t.date}</span></div>
+                <div class="card-title">${t.title}</div>
+                <p style="color:var(--text-dim); font-size:0.9em; margin-bottom:15px; flex-grow:1;">${t.notes || ''}</p>
+                <div>${(t.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}</div>
+                <a href="${t.url}" target="_blank" class="btn" style="margin-top:15px; display:block;">エディタで開く / シミュレート</a>
+            `;
+            grid.appendChild(card);
+        });
+    }
 
     // 初期化
-    app.router('dashboard');
+    setTimeout(() => router('dashboard'), 100);
 
 </script>
 </body>
