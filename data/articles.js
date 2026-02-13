@@ -39,11 +39,12 @@ TSDを作るには、まず「Tの字」が入る窪みを作り、その上に*
         description: 'シミュレータを使って実際に動かしてみるテスト。',
         content: `
             <p>以下のシミュレータで、Iミノを引くまで耐えるルートを実際に動かして確認してください。</p>
-            <iframe src="https://selmtoe.github.io/Tetris_Simulator/"></iframe>
+<iframe src="https://selmtoe.github.io/Tetris_Simulator/"></iframe>
             <p>Sを引いた場合、右側の溝を埋めずに...</p>
         `
     }
 ];
+
 
 
 
