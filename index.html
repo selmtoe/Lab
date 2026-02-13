@@ -259,14 +259,15 @@
     const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
 
     // --- ルーティング ---
-    const mainView = document.getElementById('main-view');
-    function router(page, id = null) {
-        const targetHash = id ? `${page}/${id}` : page;
-        if (location.hash !== '#' + targetHash) {
-            location.hash = targetHash;
-            return;
-        }
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+const mainView = document.getElementById('main-view');
+function router(page, id = null) {
+    const targetHash = id ? `${page}/${id}` : page;
+    if (decodeURIComponent(location.hash) !== '#' + targetHash) {
+        location.hash = targetHash;
+        return;
+    }
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
         const activeTab = document.querySelector(`.nav-item[onclick="router('${page}')"]`);
         if(activeTab) activeTab.classList.add('active');
 
@@ -529,15 +530,15 @@
     }
 
     window.addEventListener('hashchange', () => {
-        const [page, id] = location.hash.slice(1).split('/');
+        const [page, id] = decodeURIComponent(location.hash.slice(1)).split('/');
         if (page) router(page, id);
     });
 
-    // 初期化
     setTimeout(() => {
-        const [page, id] = location.hash.slice(1).split('/');
+        const [page, id] = decodeURIComponent(location.hash.slice(1)).split('/');
         router(page || 'dashboard', id);
     }, 100);
+
 
 </script>
 </body>
