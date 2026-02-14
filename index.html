@@ -6,7 +6,7 @@
 <title>TETRIS LAB</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <style>
@@ -16,25 +16,16 @@
         --text-main: #222222;
         --text-muted: #737373;
         --border-color: #e5e5e5;
-        --accent-color: #2cb696; /* note風の落ち着いたグリーン */
+        --accent-color: #2cb696;
+        /* note風の落ち着いたグリーン */
         --link-color: #1a73e8;
         --font-main: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+        --font-display: 'Orbitron', sans-serif; /* Added from Source 1 */
         --max-width: 800px;
-        
-        /* Tetris Colors (Guideline) */
-        --c-cyan: #00f0f0;   /* I */
-        --c-blue: #0000f0;   /* J */
-        --c-orange: #f0a000; /* L */
-        --c-yellow: #f0f000; /* O */
-        --c-green: #00f000;  /* S */
-        --c-purple: #a000f0; /* T */
-        --c-red: #f00000;    /* Z */
-        --c-gray: #808080;   /* Garbage */
-        --c-ghost: #404040;  /* Ghost/Shadow */
-        --c-board-bg: #111;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0;
+    }
     
     body {
         background-color: var(--bg-color);
@@ -93,7 +84,8 @@
         min-height: calc(100vh - 184px);
         animation: fadeIn 0.3s ease;
     }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0);
+    } }
 
     .section-title {
         font-size: 24px;
@@ -182,71 +174,16 @@
         font-size: 16px;
         color: var(--text-main);
     }
-    .article-body h2 { font-size: 24px; margin: 40px 0 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
-    .article-body h3 { font-size: 20px; margin: 32px 0 16px; }
+    .article-body h2 { font-size: 24px; margin: 40px 0 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;
+    }
+    .article-body h3 { font-size: 20px; margin: 32px 0 16px;
+    }
     .article-body p { margin-bottom: 24px; }
-    .article-body iframe { width: 100%; height: 500px; border: 1px solid var(--border-color); border-radius: 8px; margin: 24px 0; background: var(--surface-color); }
-    .article-body a { color: var(--accent-color); text-decoration: underline; }
+    .article-body iframe { width: 100%; height: 500px;
+    border: 1px solid var(--border-color); border-radius: 8px; margin: 24px 0; background: var(--surface-color); }
+    .article-body a { color: var(--accent-color);
+    text-decoration: underline; }
     
-    /* TETRIS RENDERER STYLES (高機能盤面描画用) */
-    .t-board-wrapper {
-        display: flex;
-        justify-content: center;
-        gap: 16px;
-        background: #222;
-        padding: 24px;
-        border-radius: 12px;
-        margin: 32px 0;
-        color: white;
-        font-family: monospace;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    .t-hold-next {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        width: 60px;
-    }
-    .t-label {
-        font-size: 10px;
-        text-align: center;
-        color: #aaa;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-    }
-    .t-mini-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1px;
-        margin-bottom: 12px;
-    }
-    .t-field {
-        display: grid;
-        grid-template-columns: repeat(10, 24px); /* セルサイズ */
-        grid-template-rows: repeat(20, 24px);
-        border: 2px solid #555;
-        background: var(--c-board-bg);
-        position: relative;
-    }
-    .t-cell {
-        width: 100%;
-        height: 100%;
-        border: 1px solid rgba(255,255,255,0.05); /* 薄いグリッド線 */
-        box-sizing: border-box;
-    }
-    /* Mino Colors */
-    .t-c-_ { background: transparent; }
-    .t-c-I { background: var(--c-cyan); border: 1px solid rgba(0,0,0,0.2); box-shadow: inset 0 0 4px rgba(0,0,0,0.2); }
-    .t-c-O { background: var(--c-yellow); border: 1px solid rgba(0,0,0,0.2); box-shadow: inset 0 0 4px rgba(0,0,0,0.2); }
-    .t-c-T { background: var(--c-purple); border: 1px solid rgba(0,0,0,0.2); box-shadow: inset 0 0 4px rgba(0,0,0,0.2); }
-    .t-c-S { background: var(--c-green); border: 1px solid rgba(0,0,0,0.2); box-shadow: inset 0 0 4px rgba(0,0,0,0.2); }
-    .t-c-Z { background: var(--c-red); border: 1px solid rgba(0,0,0,0.2); box-shadow: inset 0 0 4px rgba(0,0,0,0.2); }
-    .t-c-J { background: var(--c-blue); border: 1px solid rgba(0,0,0,0.2); box-shadow: inset 0 0 4px rgba(0,0,0,0.2); }
-    .t-c-L { background: var(--c-orange); border: 1px solid rgba(0,0,0,0.2); box-shadow: inset 0 0 4px rgba(0,0,0,0.2); }
-    .t-c-G { background: var(--c-gray); border: 1px solid rgba(0,0,0,0.2); }
-    .t-c-X { border: 2px solid #888; background: rgba(255,255,255,0.1); } /* Ghost */
-
     /* Related Articles */
     .related-section {
         margin-top: 60px;
@@ -269,7 +206,8 @@
         margin: 16px 0;
         background: #000;
     }
-    .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+    .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
+    }
     
     .timestamp-list {
         display: flex;
@@ -286,7 +224,8 @@
         text-align: left; cursor: pointer; padding: 4px 0; display: flex; gap: 12px;
     }
     .timestamp-btn:hover { color: var(--accent-color); text-decoration: underline; }
-    .time-badge { color: var(--accent-color); font-weight: 500; font-family: monospace; font-size: 16px;}
+    .time-badge { color: var(--accent-color); font-weight: 500;
+    font-family: monospace; font-size: 16px;}
 
     /* Utility */
     .btn-outline {
@@ -296,7 +235,22 @@
         transition: 0.2s; cursor: pointer;
         background: var(--surface-color);
     }
-    .btn-outline:hover { background: #f0f0f0; border-color: #dcdcdc; }
+    .btn-outline:hover { background: #f0f0f0; border-color: #dcdcdc;
+    }
+
+    /* Tetris Diagram Styles */
+    .tetris-diagram-container {
+        display: flex;
+        justify-content: center;
+        margin: 24px 0;
+        overflow-x: auto;
+    }
+    .tetris-canvas {
+        background-color: #0f0f18; /* Source 1 */
+        border-radius: 8px;
+        border: 2px solid #4b4b7c; /* Source 1 */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
 </style>
 </head>
 <body>
@@ -310,7 +264,8 @@
             <a class="nav-item" onclick="router('videos')">Videos</a>
             <a class="nav-item" onclick="router('tetofu')">Tetofu</a>
             <a class="nav-item" onclick="router('tags')">Tags</a>
-        </nav>
+    
+    </nav>
     </div>
 </header>
 
@@ -322,23 +277,33 @@
 <script src="data/tetofu.js"></script>
 
 <script>
+    // --- 定数定義 (Source 1 より移植) ---
+    const TETRIS_COLORS = { 'I': '#00f0f0', 'O': '#f0f000', 'T': '#a000f0', 'L': '#f0a000', 'J': '#0000f0', 'S': '#00f000', 'Z': '#f00000', 'G': '#999999', 'X': '#ffffff' };
+    const TETROMINOS = {
+        'I': { shape: [[0, 0], [1, 0], [2, 0], [3, 0]], center: [1.5, 0.5] }, 'O': { shape: [[0, 0], [1, 0], [0, -1], [1, -1]], center: [0.5, -0.5] },
+        'T': { shape: [[0, 0], [-1, 0], [0, -1], [1, 0]], center: [0, 0] }, 'L': { shape: [[-1, 0], [0, 0], [1, 0], [1, -1]], center: [0, 0] },
+        'J': { shape: [[0, 0], [-1, 0], [1, 0], [-1, -1]], center: [0, 0] }, 'S': { shape: [[1, -1], [-1, 0], [0, 0], [0, -1]], center: [0, 0] },
+        'Z': { shape: [[0, 0], [1, 0], [0, -1], [-1, -1]], center: [0, 0] }
+    };
+    const BLOCK_SIZE = 28;
+    const VISIBLE_HEIGHT = 20;
+
     // --- データ取得ヘルパー ---
     const getArticles = () => (window.LAB_ARTICLES || []).sort((a,b) => new Date(b.date) - new Date(a.date));
     const getVideos = () => (window.LAB_VIDEOS || []).sort((a,b) => new Date(b.date) - new Date(a.date));
     const getTetofu = () => (window.LAB_TETOFU || []).sort((a,b) => new Date(b.date) - new Date(a.date));
-
     // YouTube API連携用
     let ytPlayers = {};
     function onYouTubeIframeAPIReady() { /* 動的生成のため空 */ }
 
-    // タグHTML生成ヘルパー
+    // タグHTML生成ヘルパー（クリックで検索へ）
     const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.preventDefault(); event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
 
     // --- ルーティング ---
     const mainView = document.getElementById('main-view');
-
     function router(page, id = null) {
-        const targetHash = id ? `${page}/${id}` : page;
+        const targetHash = id ?
+        `${page}/${id}` : page;
         if (decodeURIComponent(location.hash) !== '#' + targetHash) {
             location.hash = targetHash;
             return;
@@ -347,103 +312,207 @@
 
         const activeTab = document.querySelector(`.nav-item[onclick="router('${page}')"]`);
         if(activeTab) activeTab.classList.add('active');
-
         mainView.innerHTML = '';
         window.scrollTo({top: 0, behavior: 'smooth'});
 
         switch(page) {
-            case 'dashboard': renderDashboard(); break;
+            case 'dashboard': renderDashboard();
+            break;
             case 'articles': id ? renderArticleDetail(id) : renderArticleList(); break;
             case 'videos': id ? renderVideoDetail(id) : renderVideoList(); break;
-            case 'tetofu': renderTetofu(); break;
+            case 'tetofu': renderTetofu();
+            break;
             case 'tags': id ? renderTagDetail(id) : renderTagList(); break;
         }
     }
 
-    // --- TETRIS RENDERER LOGIC (記事内の専用構文をHTMLに変換) ---
-    function renderTetrisSyntax() {
-        // marked.jsによって生成された <pre><code class="language-tetris"> を探す
-        const blocks = document.querySelectorAll('pre code.language-tetris');
-        
-        blocks.forEach(block => {
-            const rawContent = block.innerText;
-            const lines = rawContent.split('\n').map(l => l.trim()).filter(l => l);
+    // --- テトリス盤面描画システム ---
+    function renderTetrisDiagrams() {
+        // "language-tetris" クラスを持つコードブロックを探す
+        document.querySelectorAll('pre code.language-tetris').forEach(block => {
+            const container = document.createElement('div');
+            container.className = 'tetris-diagram-container';
             
-            // 設定のパース
-            let hold = [];
-            let next = [];
-            let matrixRows = [];
+            // コードブロックの内容を取得
+            const rawText = block.textContent;
             
+            // 設定と盤面データの解析
+            const config = {
+                hold: '',
+                next: '',
+                height: 20, // デフォルトの高さ
+                width: 10,
+                board: []
+            };
+            
+            const lines = rawText.split('\n').filter(l => l.trim() !== '');
             lines.forEach(line => {
-                if (line.toUpperCase().startsWith('HOLD=')) {
-                    hold = line.split('=')[1].split(',').map(s=>s.trim());
-                } else if (line.toUpperCase().startsWith('NEXT=')) {
-                    next = line.split('=')[1].split(',').map(s=>s.trim());
+                const trimmed = line.trim();
+                // 設定行の解析 (例: "HOLD: T", "HEIGHT: 6")
+                if (trimmed.includes(':') && /^[A-Z]+:/.test(trimmed)) {
+                    const [key, val] = trimmed.split(':').map(s => s.trim());
+                    if (key === 'HOLD') config.hold = val;
+                    if (key === 'NEXT') config.next = val;
+                    if (key === 'HEIGHT') config.height = parseInt(val, 10);
                 } else {
-                    // 盤面の行とみなす
-                    matrixRows.push(line);
+                    // 盤面行とみなす
+                    // _ や . は空マスとして扱う
+                    const row = trimmed.replace(/[_\.]/g, '').split(''); // 空マスは空文字にして、後で処理するか、あるいは明示的にnullにする
+                    // Source 1のロジックに合わせるため、行データを整形
+                    const boardRow = Array(config.width).fill(null);
+                    for(let x=0; x < Math.min(row.length, config.width); x++) {
+                        const char = trimmed[x];
+                        if (char && char !== '_' && char !== '.') {
+                            boardRow[x] = char;
+                        }
+                    }
+                    config.board.push(boardRow);
                 }
             });
-            
-            // 盤面を20行に正規化（入力が少ない場合は下に詰める）
-            const fullMatrix = [];
-            const padCount = 20 - matrixRows.length;
-            for(let i=0; i<padCount; i++) fullMatrix.push("__________"); // 空行
-            matrixRows.forEach(row => fullMatrix.push(row.padEnd(10, '_')));
 
-            // HTML生成
-            const createMiniGrid = (minos) => {
-                let html = '';
-                minos.forEach(mino => {
-                    // 簡易的に4x2グリッドの中央に配置するイメージ
-                    html += `<div style="margin-bottom:8px;">`;
-                    // ミノの形定義（簡易版: 文字色のみで表現せず、アイコン的にするならここでSVG化も可能だが今回はCSSクラスで対応）
-                    html += `<div class="t-mini-grid" style="width:40px; height:20px;">`;
-                        // ※ここでは簡略化のため、HOLD/NEXTは文字アイコンまたは単色ブロックとして表示
-                        // 本格的にやるならミノ種別ごとに座標データを持つが、今回は「色付きの文字ブロック」として表示
-                        html += `<div class="t-cell t-c-${mino}" style="grid-column: span 4; height: 20px; border-radius:4px;"></div>`;
-                    html += `</div></div>`;
-                });
-                return html;
+            // 盤面の高さ調整（不足分を埋める、あるいはconfig.heightに合わせて切り取る）
+            while (config.board.length < config.height) {
+                config.board.unshift(Array(config.width).fill(null));
+            }
+            if (config.board.length > config.height) {
+                config.board = config.board.slice(config.board.length - config.height);
             }
 
-            let html = `<div class="t-board-wrapper">`;
+            // Canvas作成
+            const canvas = document.createElement('canvas');
+            canvas.className = 'tetris-canvas';
             
-            // HOLD
-            html += `<div class="t-hold-next"><div class="t-label">HOLD</div>${createMiniGrid(hold)}</div>`;
+            // レイアウト計算
+            const showHold = !!config.hold;
+            const showNext = !!config.next;
             
-            // FIELD
-            html += `<div class="t-field">`;
-            fullMatrix.forEach(row => {
-                for(let char of row) {
-                    html += `<div class="t-cell t-c-${char.toUpperCase()}"></div>`;
+            const holdWidth = showHold ? 4 * BLOCK_SIZE + 10 : 0;
+            const nextWidth = showNext ? 4 * BLOCK_SIZE + 10 : 0;
+            const boardWidth = config.width * BLOCK_SIZE;
+            const padding = 20;
+            
+            canvas.width = holdWidth + boardWidth + nextWidth + (padding * 2);
+            canvas.height = config.height * BLOCK_SIZE + (padding * 2);
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 背景描画
+            ctx.fillStyle = '#0f0f18'; // Source 1: --canvas-bg-color
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 盤面描画オフセット
+            const boardX = padding + holdWidth;
+            const boardY = padding;
+            
+            // グリッドとブロックの描画
+            ctx.lineWidth = 1;
+            
+            for (let y = 0; y < config.height; y++) {
+                for (let x = 0; x < config.width; x++) {
+                    const drawX = boardX + x * BLOCK_SIZE;
+                    const drawY = boardY + y * BLOCK_SIZE;
+                    
+                    const cell = config.board[y][x];
+                    
+                    // グリッド線
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                    
+                    if (cell && TETRIS_COLORS[cell]) {
+                        // ブロック本体
+                        ctx.fillStyle = TETRIS_COLORS[cell];
+                        ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // 枠線 (Source 1 style)
+                        ctx.strokeStyle = '#444';
+                        ctx.strokeRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // 光沢エフェクト的な (Source 1 参照)
+                        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                        ctx.fillRect(drawX, drawY, BLOCK_SIZE, BLOCK_SIZE);
+                    }
                 }
-            });
-            html += `</div>`; // end field
+            }
             
-            // NEXT
-            html += `<div class="t-hold-next"><div class="t-label">NEXT</div>${createMiniGrid(next)}</div>`;
-            
-            html += `</div>`; // end wrapper
+            // 枠線 (Playfield border) - Source 1 style
+            ctx.strokeStyle = '#4b4b7c';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(boardX - 1, boardY - 1, boardWidth + 2, (config.height * BLOCK_SIZE) + 2);
 
-            // DOM置き換え (<pre>ごと置換)
-            const preContainer = block.parentElement;
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-            preContainer.replaceWith(tempDiv.firstElementChild);
+            // HOLD描画
+            if (showHold) {
+                ctx.fillStyle = '#e0e0e0';
+                ctx.font = `bold 12px "Orbitron", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText('HOLD', padding + holdWidth / 2, padding - 5);
+                
+                const piece = config.hold.trim().toUpperCase()[0];
+                if (piece && TETROMINOS[piece]) {
+                    const shape = TETROMINOS[piece].shape;
+                    const center = TETROMINOS[piece].center;
+                    const centerX = padding + holdWidth / 2;
+                    const centerY = padding + BLOCK_SIZE * 1.5;
+                    
+                    shape.forEach(([bx, by]) => {
+                        const px = centerX + (bx - center[0]) * BLOCK_SIZE;
+                        const py = centerY + (by - center[1]) * BLOCK_SIZE;
+                        drawMiniBlock(ctx, px, py, piece);
+                    });
+                }
+            }
+            
+            // NEXT描画
+            if (showNext) {
+                ctx.fillStyle = '#e0e0e0';
+                ctx.font = `bold 12px "Orbitron", sans-serif`;
+                ctx.textAlign = 'center';
+                const nextCenterX = boardX + boardWidth + nextWidth / 2;
+                ctx.fillText('NEXT', nextCenterX, padding - 5);
+                
+                const pieces = config.next.trim().toUpperCase().split('');
+                pieces.forEach((p, idx) => {
+                    if (idx > 4) return; // Limit to 5
+                    if (!TETROMINOS[p]) return;
+                    
+                    const shape = TETROMINOS[p].shape;
+                    const center = TETROMINOS[p].center;
+                    const centerX = nextCenterX;
+                    const centerY = padding + BLOCK_SIZE * 1.5 + (idx * BLOCK_SIZE * 2.5);
+                    
+                    shape.forEach(([bx, by]) => {
+                        const px = centerX + (bx - center[0]) * BLOCK_SIZE;
+                        const py = centerY + (by - center[1]) * BLOCK_SIZE;
+                        drawMiniBlock(ctx, px, py, p);
+                    });
+                });
+            }
+
+            container.appendChild(canvas);
+            
+            // 元のpre要素を置き換え
+            const pre = block.parentElement;
+            pre.parentNode.replaceChild(container, pre);
         });
     }
 
+    function drawMiniBlock(ctx, x, y, type) {
+        ctx.fillStyle = TETRIS_COLORS[type] || '#FFF';
+        ctx.fillRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
+    }
 
     // --- UI レンダリング ---
 
-    // 1. DASHBOARD
+    // 1. DASHBOARD (最新情報 + 外部リンク)
     function renderDashboard() {
         mainView.innerHTML = `
             <h2 class="section-title">最新のノート</h2>
             <div class="list-container" id="dash-list"></div>
             
-            <h2 class="section-title" style="margin-top: 60px;">ツールへのリンク</h2>
+            <h2 class="section-title" style="margin-top: 
+            60px;">ツールへのリンク</h2>
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
                 <a href="https://selmtoe.github.io/Tetris_Simulator/" target="_blank" class="btn-outline">シミュレータを開く ↗</a>
                 <a href="https://selmtoe.github.io/Tetris_Simulator/F/index.html" target="_blank" class="btn-outline">譜面エディタを開く ↗</a>
@@ -451,12 +520,12 @@
         `;
         const list = document.getElementById('dash-list');
         
+        // 最新記事・動画・テト譜を混ぜてソート
         const recent = [
             ...getArticles().slice(0, 3).map(i => ({...i, type: '記事', action: () => router('articles', i.id)})),
             ...getVideos().slice(0, 2).map(i => ({...i, type: '動画', action: () => router('videos', i.id)})),
             ...getTetofu().slice(0, 2).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')}))
         ].sort((a,b) => new Date(b.date) - new Date(a.date));
-
         recent.forEach(item => {
             const card = document.createElement('div');
             card.className = 'card';
@@ -464,18 +533,20 @@
                 card.onclick = () => window.open(item.externalUrl, '_blank');
             } else {
                 card.onclick = item.action;
+  
             }
             card.innerHTML = `
                 <div class="card-meta"><span style="font-weight:bold; color:var(--accent-color);">${item.type}</span> <span>${item.date}</span></div>
                 <div class="card-title">${item.title}</div>
                 ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
                 <div>${createTagHtml(item.tags)}</div>
+  
             `;
             list.appendChild(card);
         });
     }
 
-    // 2. ARTICLES
+    // 2. ARTICLES (記事一覧)
     function renderArticleList() {
         mainView.innerHTML = `<h2 class="section-title">記事一覧</h2><div class="list-container" id="article-list"></div>`;
         const list = document.getElementById('article-list');
@@ -486,6 +557,7 @@
             card.onclick = article.externalUrl ? () => window.open(article.externalUrl, '_blank') : () => router('articles', article.id);
             
             card.innerHTML = `
+               
                 <div class="card-meta"><span>${article.date}</span> ${article.externalUrl ? '<span style="color:var(--text-muted)">外部リンク ↗</span>' : ''}</div>
                 <div class="card-title">${article.title}</div>
                 <div class="card-desc">${article.description || ''}</div>
@@ -495,7 +567,7 @@
         });
     }
 
-    // 3. ARTICLE DETAIL
+    // 3. ARTICLE DETAIL (記事詳細 & 関連記事)
     function renderArticleDetail(id) {
         const article = getArticles().find(a => a.id === id);
         if(!article) return router('articles');
@@ -506,24 +578,25 @@
                 <div class="card-meta">${article.date}</div>
                 <h1 class="article-title">${article.title}</h1>
                 <div>${createTagHtml(article.tags)}</div>
+          
             </div>
             <div class="article-body">${marked.parse(article.content)}</div>
         `;
-        
-        // 関連記事
+        // 関連記事のサジェスト（タグの共通数で計算）
         const related = getArticles()
             .filter(a => a.id !== id)
             .map(a => ({ ...a, score: a.tags.filter(t => article.tags.includes(t)).length }))
             .filter(a => a.score > 0)
             .sort((a,b) => b.score - a.score).slice(0, 2);
-
         if(related.length > 0) {
             html += `<div class="related-section"><h3 style="font-size:18px; margin-bottom:16px;">関連記事</h3><div class="related-grid">`;
             related.forEach(r => {
+                // 外部リンク判定を追加
                 const clickAction = r.externalUrl ? `window.open('${r.externalUrl}', '_blank')` : `router('articles', '${r.id}')`;
                 const extLabel = r.externalUrl ? ' <span style="color:var(--text-muted); font-size:12px;">外部リンク ↗</span>' : '';
                 html += `
-                    <div class="card" onclick="${clickAction}" style="padding:16px;">
+           
+                        <div class="card" onclick="${clickAction}" style="padding:16px;">
                         <div class="card-title" style="font-size:16px;">${r.title}</div>
                         <div class="card-meta" style="margin:0;">${r.date}${extLabel}</div>
                     </div>`;
@@ -532,11 +605,11 @@
         }
         mainView.innerHTML = html;
         
-        // ★ ここでテトリス盤面のレンダリングを実行 ★
-        renderTetrisSyntax();
+        // 記事レンダリング後にテトリス図を描画
+        setTimeout(renderTetrisDiagrams, 0);
     }
 
-    // 4. VIDEOS
+    // 4. VIDEOS (動画一覧)
     function renderVideoList() {
         mainView.innerHTML = `<h2 class="section-title">動画研究</h2><div class="list-container" id="video-list"></div>`;
         const list = document.getElementById('video-list');
@@ -544,10 +617,11 @@
         getVideos().forEach(v => {
             const card = document.createElement('div');
             card.className = 'card';
-            card.onclick = () => router('videos', v.id);
+            card.onclick = () => router('videos', v.id); // 詳細ページへの遷移
             
             card.innerHTML = `
                 <div class="card-meta">${v.date}</div>
+   
                 <div class="card-title">${v.title}</div>
                 <div>${createTagHtml(v.tags)}</div>
             `;
@@ -555,7 +629,7 @@
         });
     }
 
-    // 4-2. VIDEO DETAIL
+    // 4-2. VIDEO DETAIL (動画詳細)
     function renderVideoDetail(id) {
         const v = getVideos().find(video => video.id === id);
         if(!v) return router('videos');
@@ -571,6 +645,7 @@
                 const s = String(ts.time % 60).padStart(2, '0');
                 timestampsHtml += `
                     <button class="timestamp-btn" onclick="seekVideo('${playerId}', ${ts.time})">
+              
                         <span class="time-badge">${m}:${s}</span>
                         <span>${ts.label}</span>
                     </button>`;
@@ -584,16 +659,19 @@
                 <div class="card-meta">${v.date}</div>
                 <h1 class="article-title">${v.title}</h1>
                 <div>${createTagHtml(v.tags)}</div>
+   
             </div>
             <div class="video-wrapper" style="border: 1px solid var(--border-color); border-radius: 8px;"><div id="${playerId}"></div></div>
             ${timestampsHtml}
         `;
+        // YouTube Playerの確実な初期化
         const initYT = () => {
             if (window.YT && YT.Player) {
                 ytPlayers[playerId] = new YT.Player(playerId, {
                     videoId: v.youtubeId,
                     playerVars: { 'rel': 0 }
-                });
+    
+            });
             } else {
                 setTimeout(initYT, 100);
             }
@@ -609,17 +687,19 @@
         }
     }
 
-    // 5. TETOFU
+    // 5. TETOFU (テト譜)
     function renderTetofu() {
         mainView.innerHTML = `<h2 class="section-title">テト譜・盤面アーカイブ</h2><div class="list-container" id="tetofu-list"></div>`;
         const list = document.getElementById('tetofu-list');
         
         getTetofu().forEach(t => {
+            // <a>タグをやめて<div>にすることで、タグクリック時のイベントキャンセリングを機能させる
             const card = document.createElement('div');
             card.className = 'card';
             card.onclick = () => window.open(t.url, '_blank');
             card.innerHTML = `
                 <div class="card-meta"><span>${t.date}</span> <span style="color:var(--text-muted)">外部リンク ↗</span></div>
+ 
                 <div class="card-title">${t.title}</div>
                 <div class="card-desc">${t.notes || ''}</div>
                 <div>${createTagHtml(t.tags)}</div>
@@ -628,9 +708,10 @@
         });
     }
 
-    // 6. TAGS
+    // 6. TAGS (タグ一覧 & 検索結果)
     function renderTagList() {
-        mainView.innerHTML = `<h2 class="section-title">タグ一覧</h2><div class="list-container" style="flex-direction:row; flex-wrap:wrap;" id="tag-cloud"></div>`;
+        mainView.innerHTML = `<h2 class="section-title">タグ一覧</h2><div class="list-container" style="flex-direction:row; flex-wrap:wrap;"
+        id="tag-cloud"></div>`;
         const container = document.getElementById('tag-cloud');
         
         const allTags = {};
@@ -638,17 +719,19 @@
         collect(getArticles());
         collect(getTetofu());
         
+        // 動画タグ＋タイムスタンプ内のタグも集計
         getVideos().forEach(v => {
             (v.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1);
             (v.timestamps || []).forEach(ts => (ts.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1));
         });
-
+        // 件数順にソートして表示
         Object.entries(allTags).sort((a,b) => b[1] - a[1]).forEach(([tag, count]) => {
             const el = document.createElement('span');
             el.className = 'tag';
             el.style.fontSize = '14px'; el.style.padding = '6px 14px';
             el.innerHTML = `${tag} (${count})`;
             el.onclick = () => router('tags', tag);
+     
             container.appendChild(el);
         });
     }
@@ -661,16 +744,17 @@
         `;
         const list = document.getElementById('tag-results');
 
+        // 全コンテンツから検索（タイムスタンプ内タグも含む）
         const results = [
             ...getArticles().filter(a => (a.tags || []).includes(tagName)).map(i => ({...i, type: '記事', action: () => router('articles', i.id)})),
             ...getTetofu().filter(t => (t.tags || []).includes(tagName)).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')})),
             ...getVideos().filter(v => {
-                const hasTag = (v.tags || []).includes(tagName);
+                const hasTag = (v.tags 
+                || []).includes(tagName);
                 const hasTsTag = (v.timestamps || []).some(ts => (ts.tags || []).includes(tagName));
                 return hasTag || hasTsTag;
             }).map(i => ({...i, type: '動画', action: () => router('videos', i.id)}))
         ].sort((a,b) => new Date(b.date) - new Date(a.date));
-
         if(results.length === 0) {
             list.innerHTML = `<div style="color:var(--text-muted);">該当するコンテンツはありません。</div>`;
             return;
@@ -682,12 +766,14 @@
             if (item.externalUrl) {
                 card.onclick = () => window.open(item.externalUrl, '_blank');
             } else {
+            
                 card.onclick = item.action;
             }
             card.innerHTML = `
                 <div class="card-meta"><span style="font-weight:bold; color:var(--accent-color);">${item.type}</span> <span>${item.date}</span></div>
                 <div class="card-title">${item.title}</div>
                 ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
+          
                 <div>${createTagHtml(item.tags)}</div>
             `;
             list.appendChild(card);
@@ -698,7 +784,6 @@
         const [page, id] = decodeURIComponent(location.hash.slice(1)).split('/');
         if (page) router(page, id);
     });
-
     setTimeout(() => {
         const [page, id] = decodeURIComponent(location.hash.slice(1)).split('/');
         router(page || 'dashboard', id);
