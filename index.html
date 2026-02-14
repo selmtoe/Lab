@@ -6,7 +6,7 @@
 <title>TETRIS LAB</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <style>
@@ -16,7 +16,8 @@
         --text-main: #222222;
         --text-muted: #737373;
         --border-color: #e5e5e5;
-        --accent-color: #2cb696; /* note風の落ち着いたグリーン */
+        --accent-color: #2cb696;
+        /* note風の落ち着いたグリーン */
         --link-color: #1a73e8;
         --font-main: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
         --max-width: 800px;
@@ -176,31 +177,6 @@
     .article-body iframe { width: 100%; height: 500px; border: 1px solid var(--border-color); border-radius: 8px; margin: 24px 0; background: var(--surface-color); }
     .article-body a { color: var(--accent-color); text-decoration: underline; }
     
-    /* Fumen Embed Styles */
-    .fumen-canvas-wrapper {
-        display: flex;
-        justify-content: center;
-        margin: 24px 0;
-        background: transparent;
-    }
-    .fumen-canvas {
-        background-color: #0f0f18; /* Editor BG color */
-        border: 2px solid #4b4b7c;
-        border-radius: 8px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-        max-width: 100%;
-        height: auto;
-    }
-    .fumen-error {
-        color: #e53935;
-        background: #ffebee;
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid #ffcdd2;
-        font-size: 14px;
-        text-align: center;
-    }
-
     /* Related Articles */
     .related-section {
         margin-top: 60px;
@@ -276,275 +252,6 @@
 <script src="data/tetofu.js"></script>
 
 <script>
-    // --- Fumen Renderer Logic ---
-    const FumenRenderer = (() => {
-        // Constants from Editor
-        const BOARD_WIDTH = 10;
-        const BOARD_HEIGHT = 40;
-        const BLOCK_SIZE = 24; // Base size for rendering (Editor used 28, slightly smaller for embedding)
-        const COLORS = { 
-            'I': '#00f0f0', 'O': '#f0f000', 'T': '#a000f0', 'L': '#f0a000', 'J': '#0000f0', 
-            'S': '#00f000', 'Z': '#f00000', 'G': '#999999', 'X': '#999999', '_': null 
-        };
-        const TETROMINOS = {
-            'I': { shape: [[0, 0], [1, 0], [2, 0], [3, 0]], center: [1.5, 0.5] }, 
-            'O': { shape: [[0, 0], [1, 0], [0, -1], [1, -1]], center: [0.5, -0.5] },
-            'T': { shape: [[0, 0], [-1, 0], [0, -1], [1, 0]], center: [0, 0] }, 
-            'L': { shape: [[-1, 0], [0, 0], [1, 0], [1, -1]], center: [0, 0] },
-            'J': { shape: [[0, 0], [-1, 0], [1, 0], [-1, -1]], center: [0, 0] }, 
-            'S': { shape: [[1, -1], [-1, 0], [0, 0], [0, -1]], center: [0, 0] },
-            'Z': { shape: [[0, 0], [1, 0], [0, -1], [-1, -1]], center: [0, 0] }
-        };
-
-        // Helpers
-        const getShape = (p, r=0) => { 
-            if(!p || !TETROMINOS[p]) return []; 
-            const o = TETROMINOS[p].shape; 
-            if(r===0 || p==='O') return o; 
-            const c = TETROMINOS[p].center;
-            return o.map(b => {
-                let [x,y] = [b[0]-c[0], b[1]-c[1]]; 
-                for(let i=0; i<r; i++){ [x,y] = [-y,x]; } 
-                return [x+c[0], y+c[1]]; // Simplified for visual only
-            });
-        };
-
-        const decodeRLE = (rleData) => {
-            const data = [];
-            for (const [value, count] of rleData) {
-                for (let i = 0; i < count; i++) data.push(value);
-            }
-            while (data.length < BOARD_WIDTH * BOARD_HEIGHT) data.push('_');
-            return data;
-        };
-
-        const stringToBoard = (str) => {
-            const board = [];
-            for (let i = 0; i < BOARD_HEIGHT; i++) {
-                const rowStr = str.substring(i * BOARD_WIDTH, (i + 1) * BOARD_WIDTH);
-                board.push(rowStr.split('').map(char => (char === '_' ? null : char)));
-            }
-            return board;
-        };
-
-        const parseFumenURL = (url) => {
-            try {
-                const hash = url.split('#')[1];
-                if (!hash) throw new Error("No hash found");
-                const binaryString = atob(hash);
-                const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
-                const jsonString = new TextDecoder().decode(bytes);
-                const data = JSON.parse(jsonString);
-                
-                // Extract Page 1
-                const page = data.p[0];
-                const pageData = page.p1 || page; // Support 1P structure
-
-                let boardStrArr = [];
-                if (data.v === 'f1') {
-                    boardStrArr = pageData.b.split('');
-                } else {
-                    // v2 (RLE)
-                    boardStrArr = decodeRLE(pageData.b);
-                }
-                
-                return {
-                    board: stringToBoard(boardStrArr.join('')),
-                    hold: pageData.h || '',
-                    next: pageData.n || ''
-                };
-            } catch (e) {
-                console.error("Fumen Parse Error", e);
-                return null;
-            }
-        };
-
-        return {
-            render: (container, rawCode) => {
-                let data = { board: Array(40).fill(Array(10).fill(null)), hold: '', next: '' };
-                let options = { viewHeight: 20, showNext: true, showHold: true, blockSize: BLOCK_SIZE };
-                
-                // Parse Input (URL or JSON)
-                try {
-                    const trimmed = rawCode.trim();
-                    if (trimmed.startsWith('{')) {
-                        const json = JSON.parse(trimmed);
-                        options = { ...options, ...json.settings };
-                        if (json.url) {
-                            const parsed = parseFumenURL(json.url);
-                            if(parsed) data = parsed;
-                        } else if (json.board) {
-                            // Custom board definitions (Array of strings)
-                            // Convert visual rows (bottom-up logic usually, but here let's assume top-down visual)
-                            // We need to map 10xN input to 10x40 board
-                            const inputBoard = json.board;
-                            const emptyRow = Array(10).fill(null);
-                            const fullBoard = Array.from({length: 40}, () => [...emptyRow]);
-                            // Fill from bottom
-                            const h = inputBoard.length;
-                            for(let i=0; i<h; i++) {
-                                const rowStr = inputBoard[h - 1 - i];
-                                fullBoard[39-i] = rowStr.split('').map(c => c === '_' ? null : c);
-                            }
-                            data.board = fullBoard;
-                        }
-                    } else if (trimmed.startsWith('http')) {
-                        const parsed = parseFumenURL(trimmed);
-                        if(parsed) data = parsed;
-                    }
-                } catch (e) {
-                    container.innerHTML = `<div class="fumen-error">Invalid Fumen Code</div>`;
-                    return;
-                }
-
-                if (!data) {
-                    container.innerHTML = `<div class="fumen-error">Failed to load data</div>`;
-                    return;
-                }
-
-                // Setup Canvas
-                const bs = options.blockSize;
-                const viewH = options.viewHeight;
-                const pad = 20;
-                const holdW = options.showHold ? 4.5 * bs : 0;
-                const nextW = options.showNext ? 4.5 * bs : 0;
-                const boardW = 10 * bs;
-                
-                const canvas = document.createElement('canvas');
-                const totalW = holdW + boardW + nextW + (pad * 2);
-                const totalH = (viewH * bs) + (pad * 1); // little padding top
-                
-                // High DPI
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = totalW * dpr;
-                canvas.height = totalH * dpr;
-                canvas.style.width = `${totalW}px`;
-                canvas.style.height = `${totalH}px`;
-                canvas.className = 'fumen-canvas';
-                
-                const ctx = canvas.getContext('2d');
-                ctx.scale(dpr, dpr);
-                
-                // Background
-                ctx.fillStyle = '#0f0f18';
-                ctx.fillRect(0, 0, totalW, totalH);
-
-                // --- Drawing Functions ---
-                const drawBlock = (x, y, type, isGhost=false) => {
-                    const px = x; 
-                    const py = y;
-                    if (py < 0) return; // Clipped
-                    
-                    ctx.fillStyle = isGhost ? 'rgba(255,255,255,0.2)' : (COLORS[type] || '#FFF');
-                    ctx.fillRect(px, py, bs, bs);
-                    
-                    // Inner Highlight (Bevel effect simulation)
-                    if (!isGhost) {
-                        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-                        ctx.fillRect(px, py, bs, bs*0.1); // Top highlight
-                        ctx.fillStyle = 'rgba(0,0,0,0.1)';
-                        ctx.fillRect(px, py + bs*0.9, bs, bs*0.1); // Bottom shadow
-                    }
-
-                    ctx.strokeStyle = '#444';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(px, py, bs, bs);
-                };
-
-                const offsetX = pad + holdW;
-                const offsetY = pad; // slight top margin
-
-                // 1. Draw Field Grid & Blocks
-                ctx.save();
-                ctx.translate(offsetX, offsetY);
-                
-                // Grid Background
-                ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.fillRect(0, 0, boardW, viewH * bs);
-
-                const startRow = 40 - viewH; // 20 if viewHeight is 20
-                for (let y = 0; y < viewH; y++) {
-                    const boardY = startRow + y;
-                    // Check Line Clear (visual only - light highlight)
-                    let isFull = true;
-                    if(data.board[boardY]) {
-                        for(let x=0; x<10; x++) if(!data.board[boardY][x]) isFull = false;
-                    } else isFull = false;
-
-                    for (let x = 0; x < 10; x++) {
-                        const type = data.board[boardY] ? data.board[boardY][x] : null;
-                        
-                        // Grid lines
-                        ctx.strokeStyle = '#333';
-                        ctx.lineWidth = 0.5;
-                        ctx.strokeRect(x*bs, y*bs, bs, bs);
-
-                        if (type) {
-                            drawBlock(x*bs, y*bs, type);
-                            if(isFull) {
-                                ctx.fillStyle = 'rgba(255,255,255,0.4)';
-                                ctx.fillRect(x*bs, y*bs, bs, bs);
-                            }
-                        }
-                    }
-                }
-                
-                // Border
-                ctx.strokeStyle = '#4b4b7c';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(0, 0, boardW, viewH * bs);
-                ctx.restore();
-
-                // 2. Draw Hold
-                if (options.showHold) {
-                    ctx.save();
-                    ctx.translate(pad, offsetY);
-                    ctx.fillStyle = '#FFF';
-                    ctx.font = `bold ${bs*0.6}px "Orbitron", sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.fillText('HOLD', holdW/2, bs);
-                    
-                    if (data.hold) {
-                        const t = data.hold.toUpperCase();
-                        const s = getShape(t);
-                        // Center in Hold area
-                        const cx = holdW/2;
-                        const cy = bs * 2.5;
-                        s.forEach(b => {
-                            drawBlock(cx + b[0]*bs - (bs/2), cy + b[1]*bs, t);
-                        });
-                    }
-                    ctx.restore();
-                }
-
-                // 3. Draw Next
-                if (options.showNext) {
-                    ctx.save();
-                    ctx.translate(offsetX + boardW + pad/2, offsetY);
-                    ctx.fillStyle = '#FFF';
-                    ctx.font = `bold ${bs*0.6}px "Orbitron", sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.fillText('NEXT', nextW/2, bs);
-                    
-                    const nexts = data.next.split('').slice(0, 5);
-                    for(let i=0; i<nexts.length; i++) {
-                        const t = nexts[i].toUpperCase();
-                        const s = getShape(t);
-                        const cx = nextW/2;
-                        const cy = bs * 2.5 + (i * bs * 2.8);
-                        s.forEach(b => {
-                            drawBlock(cx + b[0]*bs - (bs/2), cy + b[1]*bs, t);
-                        });
-                    }
-                    ctx.restore();
-                }
-
-                container.innerHTML = '';
-                container.appendChild(canvas);
-            }
-        };
-    })();
-
     // --- データ取得ヘルパー ---
     const getArticles = () => (window.LAB_ARTICLES || []).sort((a,b) => new Date(b.date) - new Date(a.date));
     const getVideos = () => (window.LAB_VIDEOS || []).sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -559,7 +266,6 @@
 
     // --- ルーティング ---
     const mainView = document.getElementById('main-view');
-
     function router(page, id = null) {
         const targetHash = id ? `${page}/${id}` : page;
         if (decodeURIComponent(location.hash) !== '#' + targetHash) {
@@ -681,24 +387,6 @@
             html += `</div></div>`;
         }
         mainView.innerHTML = html;
-
-        // --- FUMEN EMBED PROCESSING ---
-        // Marked.js converts ```fumen ... ``` to <pre><code class="language-fumen">...</code></pre>
-        document.querySelectorAll('code.language-fumen').forEach(codeBlock => {
-            const rawCode = codeBlock.textContent;
-            const preContainer = codeBlock.parentElement;
-            
-            // Create wrapper
-            const wrapper = document.createElement('div');
-            wrapper.className = 'fumen-canvas-wrapper';
-            
-            // Replace pre with wrapper
-            preContainer.parentNode.insertBefore(wrapper, preContainer);
-            preContainer.style.display = 'none'; // Hide original code
-
-            // Render
-            FumenRenderer.render(wrapper, rawCode);
-        });
     }
 
     // 4. VIDEOS (動画一覧)
@@ -753,6 +441,7 @@
             <div class="video-wrapper" style="border: 1px solid var(--border-color); border-radius: 8px;"><div id="${playerId}"></div></div>
             ${timestampsHtml}
         `;
+
         // YouTube Playerの確実な初期化
         const initYT = () => {
             if (window.YT && YT.Player) {
@@ -802,6 +491,7 @@
         
         const allTags = {};
         const collect = (items) => items.forEach(i => (i.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1));
+
         collect(getArticles());
         collect(getTetofu());
         
@@ -810,7 +500,7 @@
             (v.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1);
             (v.timestamps || []).forEach(ts => (ts.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1));
         });
-        
+
         // 件数順にソートして表示
         Object.entries(allTags).sort((a,b) => b[1] - a[1]).forEach(([tag, count]) => {
             const el = document.createElement('span');
@@ -868,7 +558,7 @@
         const [page, id] = decodeURIComponent(location.hash.slice(1)).split('/');
         if (page) router(page, id);
     });
-    
+
     setTimeout(() => {
         const [page, id] = decodeURIComponent(location.hash.slice(1)).split('/');
         router(page || 'dashboard', id);
