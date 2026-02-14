@@ -1,1 +1,878 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TETRIS LAB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+<script src="https://www.youtube.com/iframe_api"></script>
 
+<style>
+    :root {
+        --bg-color: #f9f9f9;
+        --surface-color: #ffffff;
+        --text-main: #222222;
+        --text-muted: #737373;
+        --border-color: #e5e5e5;
+        --accent-color: #2cb696; /* note風の落ち着いたグリーン */
+        --link-color: #1a73e8;
+        --font-main: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+        --max-width: 800px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: var(--font-main);
+        line-height: 1.8;
+        letter-spacing: 0.03em;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header Navigation */
+    header {
+        background-color: var(--surface-color);
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    .header-inner {
+        max-width: var(--max-width);
+        margin: 0 auto;
+        padding: 0 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 64px;
+    }
+    .logo {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-main);
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .nav-links {
+        display: flex;
+        gap: 20px;
+    }
+    .nav-item {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .nav-item:hover, .nav-item.active {
+        color: var(--accent-color);
+    }
+
+    /* Main Container */
+    .container {
+        max-width: var(--max-width);
+        margin: 40px auto 80px;
+        padding: 0 20px;
+        min-height: calc(100vh - 184px);
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .section-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 24px;
+        color: var(--text-main);
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 12px;
+    }
+
+    /* Cards (List items) */
+    .list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+    .card {
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 24px;
+        cursor: pointer;
+        transition: box-shadow 0.2s, transform 0.2s;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    .card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transform: translateY(-2px);
+    }
+    .card-meta {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+    .card-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+    .card-desc {
+        font-size: 15px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    /* Tags */
+    .tag {
+        display: inline-block;
+        padding: 2px 10px;
+        font-size: 12px;
+        background-color: #f0f0f0;
+        color: var(--text-muted);
+        border-radius: 100px;
+        margin: 0 6px 6px 0;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s;
+        position: relative;
+        z-index: 2;
+    }
+    .tag:hover {
+        background-color: var(--accent-color);
+        color: #fff;
+    }
+
+    /* Article Reader */
+    .article-header {
+        margin-bottom: 40px;
+    }
+    .article-title {
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1.4;
+        margin: 16px 0;
+    }
+    .article-body {
+        font-size: 16px;
+        color: var(--text-main);
+    }
+    .article-body h2 { font-size: 24px; margin: 40px 0 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+    .article-body h3 { font-size: 20px; margin: 32px 0 16px; }
+    .article-body p { margin-bottom: 24px; }
+    .article-body iframe { width: 100%; height: 500px; border: 1px solid var(--border-color); border-radius: 8px; margin: 24px 0; background: var(--surface-color); }
+    .article-body a { color: var(--accent-color); text-decoration: underline; }
+    
+    /* Fumen Embed Styles */
+    .fumen-canvas-wrapper {
+        display: flex;
+        justify-content: center;
+        margin: 24px 0;
+        background: transparent;
+    }
+    .fumen-canvas {
+        background-color: #0f0f18; /* Editor BG color */
+        border: 2px solid #4b4b7c;
+        border-radius: 8px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        max-width: 100%;
+        height: auto;
+    }
+    .fumen-error {
+        color: #e53935;
+        background: #ffebee;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #ffcdd2;
+        font-size: 14px;
+        text-align: center;
+    }
+
+    /* Related Articles */
+    .related-section {
+        margin-top: 60px;
+        padding-top: 40px;
+        border-top: 1px solid var(--border-color);
+    }
+    .related-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 16px;
+    }
+
+    /* Videos & Iframes */
+    .video-wrapper {
+        position: relative;
+        padding-bottom: 56.25%;
+        height: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        margin: 16px 0;
+        background: #000;
+    }
+    .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+    
+    .timestamp-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 16px;
+        background: #f9f9f9;
+        padding: 16px;
+        border-radius: 8px;
+    }
+    .timestamp-btn {
+        background: none; border: none; font-size: 15px;
+        color: var(--text-main);
+        text-align: left; cursor: pointer; padding: 4px 0; display: flex; gap: 12px;
+    }
+    .timestamp-btn:hover { color: var(--accent-color); text-decoration: underline; }
+    .time-badge { color: var(--accent-color); font-weight: 500; font-family: monospace; font-size: 16px;}
+
+    /* Utility */
+    .btn-outline {
+        display: inline-block;
+        padding: 8px 16px; border: 1px solid var(--border-color);
+        border-radius: 100px; color: var(--text-main); text-decoration: none; font-size: 14px;
+        transition: 0.2s; cursor: pointer;
+        background: var(--surface-color);
+    }
+    .btn-outline:hover { background: #f0f0f0; border-color: #dcdcdc; }
+</style>
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <div class="logo" onclick="router('dashboard')">TETRIS LAB</div>
+        <nav class="nav-links">
+            <a class="nav-item active" onclick="router('dashboard')">Home</a>
+            <a class="nav-item" onclick="router('articles')">Articles</a>
+            <a class="nav-item" onclick="router('videos')">Videos</a>
+            <a class="nav-item" onclick="router('tetofu')">Tetofu</a>
+            <a class="nav-item" onclick="router('tags')">Tags</a>
+        </nav>
+    </div>
+</header>
+
+<main id="main-view" class="container"></main>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="data/articles.js"></script>
+<script src="data/videos.js"></script>
+<script src="data/tetofu.js"></script>
+
+<script>
+    // --- Fumen Renderer Logic ---
+    const FumenRenderer = (() => {
+        // Constants from Editor
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 40;
+        const BLOCK_SIZE = 24; // Base size for rendering (Editor used 28, slightly smaller for embedding)
+        const COLORS = { 
+            'I': '#00f0f0', 'O': '#f0f000', 'T': '#a000f0', 'L': '#f0a000', 'J': '#0000f0', 
+            'S': '#00f000', 'Z': '#f00000', 'G': '#999999', 'X': '#999999', '_': null 
+        };
+        const TETROMINOS = {
+            'I': { shape: [[0, 0], [1, 0], [2, 0], [3, 0]], center: [1.5, 0.5] }, 
+            'O': { shape: [[0, 0], [1, 0], [0, -1], [1, -1]], center: [0.5, -0.5] },
+            'T': { shape: [[0, 0], [-1, 0], [0, -1], [1, 0]], center: [0, 0] }, 
+            'L': { shape: [[-1, 0], [0, 0], [1, 0], [1, -1]], center: [0, 0] },
+            'J': { shape: [[0, 0], [-1, 0], [1, 0], [-1, -1]], center: [0, 0] }, 
+            'S': { shape: [[1, -1], [-1, 0], [0, 0], [0, -1]], center: [0, 0] },
+            'Z': { shape: [[0, 0], [1, 0], [0, -1], [-1, -1]], center: [0, 0] }
+        };
+
+        // Helpers
+        const getShape = (p, r=0) => { 
+            if(!p || !TETROMINOS[p]) return []; 
+            const o = TETROMINOS[p].shape; 
+            if(r===0 || p==='O') return o; 
+            const c = TETROMINOS[p].center;
+            return o.map(b => {
+                let [x,y] = [b[0]-c[0], b[1]-c[1]]; 
+                for(let i=0; i<r; i++){ [x,y] = [-y,x]; } 
+                return [x+c[0], y+c[1]]; // Simplified for visual only
+            });
+        };
+
+        const decodeRLE = (rleData) => {
+            const data = [];
+            for (const [value, count] of rleData) {
+                for (let i = 0; i < count; i++) data.push(value);
+            }
+            while (data.length < BOARD_WIDTH * BOARD_HEIGHT) data.push('_');
+            return data;
+        };
+
+        const stringToBoard = (str) => {
+            const board = [];
+            for (let i = 0; i < BOARD_HEIGHT; i++) {
+                const rowStr = str.substring(i * BOARD_WIDTH, (i + 1) * BOARD_WIDTH);
+                board.push(rowStr.split('').map(char => (char === '_' ? null : char)));
+            }
+            return board;
+        };
+
+        const parseFumenURL = (url) => {
+            try {
+                const hash = url.split('#')[1];
+                if (!hash) throw new Error("No hash found");
+                const binaryString = atob(hash);
+                const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
+                const jsonString = new TextDecoder().decode(bytes);
+                const data = JSON.parse(jsonString);
+                
+                // Extract Page 1
+                const page = data.p[0];
+                const pageData = page.p1 || page; // Support 1P structure
+
+                let boardStrArr = [];
+                if (data.v === 'f1') {
+                    boardStrArr = pageData.b.split('');
+                } else {
+                    // v2 (RLE)
+                    boardStrArr = decodeRLE(pageData.b);
+                }
+                
+                return {
+                    board: stringToBoard(boardStrArr.join('')),
+                    hold: pageData.h || '',
+                    next: pageData.n || ''
+                };
+            } catch (e) {
+                console.error("Fumen Parse Error", e);
+                return null;
+            }
+        };
+
+        return {
+            render: (container, rawCode) => {
+                let data = { board: Array(40).fill(Array(10).fill(null)), hold: '', next: '' };
+                let options = { viewHeight: 20, showNext: true, showHold: true, blockSize: BLOCK_SIZE };
+                
+                // Parse Input (URL or JSON)
+                try {
+                    const trimmed = rawCode.trim();
+                    if (trimmed.startsWith('{')) {
+                        const json = JSON.parse(trimmed);
+                        options = { ...options, ...json.settings };
+                        if (json.url) {
+                            const parsed = parseFumenURL(json.url);
+                            if(parsed) data = parsed;
+                        } else if (json.board) {
+                            // Custom board definitions (Array of strings)
+                            // Convert visual rows (bottom-up logic usually, but here let's assume top-down visual)
+                            // We need to map 10xN input to 10x40 board
+                            const inputBoard = json.board;
+                            const emptyRow = Array(10).fill(null);
+                            const fullBoard = Array.from({length: 40}, () => [...emptyRow]);
+                            // Fill from bottom
+                            const h = inputBoard.length;
+                            for(let i=0; i<h; i++) {
+                                const rowStr = inputBoard[h - 1 - i];
+                                fullBoard[39-i] = rowStr.split('').map(c => c === '_' ? null : c);
+                            }
+                            data.board = fullBoard;
+                        }
+                    } else if (trimmed.startsWith('http')) {
+                        const parsed = parseFumenURL(trimmed);
+                        if(parsed) data = parsed;
+                    }
+                } catch (e) {
+                    container.innerHTML = `<div class="fumen-error">Invalid Fumen Code</div>`;
+                    return;
+                }
+
+                if (!data) {
+                    container.innerHTML = `<div class="fumen-error">Failed to load data</div>`;
+                    return;
+                }
+
+                // Setup Canvas
+                const bs = options.blockSize;
+                const viewH = options.viewHeight;
+                const pad = 20;
+                const holdW = options.showHold ? 4.5 * bs : 0;
+                const nextW = options.showNext ? 4.5 * bs : 0;
+                const boardW = 10 * bs;
+                
+                const canvas = document.createElement('canvas');
+                const totalW = holdW + boardW + nextW + (pad * 2);
+                const totalH = (viewH * bs) + (pad * 1); // little padding top
+                
+                // High DPI
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = totalW * dpr;
+                canvas.height = totalH * dpr;
+                canvas.style.width = `${totalW}px`;
+                canvas.style.height = `${totalH}px`;
+                canvas.className = 'fumen-canvas';
+                
+                const ctx = canvas.getContext('2d');
+                ctx.scale(dpr, dpr);
+                
+                // Background
+                ctx.fillStyle = '#0f0f18';
+                ctx.fillRect(0, 0, totalW, totalH);
+
+                // --- Drawing Functions ---
+                const drawBlock = (x, y, type, isGhost=false) => {
+                    const px = x; 
+                    const py = y;
+                    if (py < 0) return; // Clipped
+                    
+                    ctx.fillStyle = isGhost ? 'rgba(255,255,255,0.2)' : (COLORS[type] || '#FFF');
+                    ctx.fillRect(px, py, bs, bs);
+                    
+                    // Inner Highlight (Bevel effect simulation)
+                    if (!isGhost) {
+                        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                        ctx.fillRect(px, py, bs, bs*0.1); // Top highlight
+                        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+                        ctx.fillRect(px, py + bs*0.9, bs, bs*0.1); // Bottom shadow
+                    }
+
+                    ctx.strokeStyle = '#444';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(px, py, bs, bs);
+                };
+
+                const offsetX = pad + holdW;
+                const offsetY = pad; // slight top margin
+
+                // 1. Draw Field Grid & Blocks
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
+                
+                // Grid Background
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(0, 0, boardW, viewH * bs);
+
+                const startRow = 40 - viewH; // 20 if viewHeight is 20
+                for (let y = 0; y < viewH; y++) {
+                    const boardY = startRow + y;
+                    // Check Line Clear (visual only - light highlight)
+                    let isFull = true;
+                    if(data.board[boardY]) {
+                        for(let x=0; x<10; x++) if(!data.board[boardY][x]) isFull = false;
+                    } else isFull = false;
+
+                    for (let x = 0; x < 10; x++) {
+                        const type = data.board[boardY] ? data.board[boardY][x] : null;
+                        
+                        // Grid lines
+                        ctx.strokeStyle = '#333';
+                        ctx.lineWidth = 0.5;
+                        ctx.strokeRect(x*bs, y*bs, bs, bs);
+
+                        if (type) {
+                            drawBlock(x*bs, y*bs, type);
+                            if(isFull) {
+                                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                                ctx.fillRect(x*bs, y*bs, bs, bs);
+                            }
+                        }
+                    }
+                }
+                
+                // Border
+                ctx.strokeStyle = '#4b4b7c';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(0, 0, boardW, viewH * bs);
+                ctx.restore();
+
+                // 2. Draw Hold
+                if (options.showHold) {
+                    ctx.save();
+                    ctx.translate(pad, offsetY);
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = `bold ${bs*0.6}px "Orbitron", sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('HOLD', holdW/2, bs);
+                    
+                    if (data.hold) {
+                        const t = data.hold.toUpperCase();
+                        const s = getShape(t);
+                        // Center in Hold area
+                        const cx = holdW/2;
+                        const cy = bs * 2.5;
+                        s.forEach(b => {
+                            drawBlock(cx + b[0]*bs - (bs/2), cy + b[1]*bs, t);
+                        });
+                    }
+                    ctx.restore();
+                }
+
+                // 3. Draw Next
+                if (options.showNext) {
+                    ctx.save();
+                    ctx.translate(offsetX + boardW + pad/2, offsetY);
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = `bold ${bs*0.6}px "Orbitron", sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('NEXT', nextW/2, bs);
+                    
+                    const nexts = data.next.split('').slice(0, 5);
+                    for(let i=0; i<nexts.length; i++) {
+                        const t = nexts[i].toUpperCase();
+                        const s = getShape(t);
+                        const cx = nextW/2;
+                        const cy = bs * 2.5 + (i * bs * 2.8);
+                        s.forEach(b => {
+                            drawBlock(cx + b[0]*bs - (bs/2), cy + b[1]*bs, t);
+                        });
+                    }
+                    ctx.restore();
+                }
+
+                container.innerHTML = '';
+                container.appendChild(canvas);
+            }
+        };
+    })();
+
+    // --- データ取得ヘルパー ---
+    const getArticles = () => (window.LAB_ARTICLES || []).sort((a,b) => new Date(b.date) - new Date(a.date));
+    const getVideos = () => (window.LAB_VIDEOS || []).sort((a,b) => new Date(b.date) - new Date(a.date));
+    const getTetofu = () => (window.LAB_TETOFU || []).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+    // YouTube API連携用
+    let ytPlayers = {};
+    function onYouTubeIframeAPIReady() { /* 動的生成のため空 */ }
+
+    // タグHTML生成ヘルパー（クリックで検索へ）※親要素へのイベント伝播とデフォルト遷移を防ぐ
+    const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.preventDefault(); event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
+
+    // --- ルーティング ---
+    const mainView = document.getElementById('main-view');
+
+    function router(page, id = null) {
+        const targetHash = id ? `${page}/${id}` : page;
+        if (decodeURIComponent(location.hash) !== '#' + targetHash) {
+            location.hash = targetHash;
+            return;
+        }
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+        const activeTab = document.querySelector(`.nav-item[onclick="router('${page}')"]`);
+        if(activeTab) activeTab.classList.add('active');
+
+        mainView.innerHTML = '';
+        window.scrollTo({top: 0, behavior: 'smooth'});
+
+        switch(page) {
+            case 'dashboard': renderDashboard(); break;
+            case 'articles': id ? renderArticleDetail(id) : renderArticleList(); break;
+            case 'videos': id ? renderVideoDetail(id) : renderVideoList(); break;
+            case 'tetofu': renderTetofu(); break;
+            case 'tags': id ? renderTagDetail(id) : renderTagList(); break;
+        }
+    }
+
+    // --- UI レンダリング ---
+
+    // 1. DASHBOARD (最新情報 + 外部リンク)
+    function renderDashboard() {
+        mainView.innerHTML = `
+            <h2 class="section-title">最新のノート</h2>
+            <div class="list-container" id="dash-list"></div>
+            
+            <h2 class="section-title" style="margin-top: 60px;">ツールへのリンク</h2>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <a href="https://selmtoe.github.io/Tetris_Simulator/" target="_blank" class="btn-outline">シミュレータを開く ↗</a>
+                <a href="https://selmtoe.github.io/Tetris_Simulator/F/index.html" target="_blank" class="btn-outline">譜面エディタを開く ↗</a>
+            </div>
+        `;
+        const list = document.getElementById('dash-list');
+        
+        // 最新記事・動画・テト譜を混ぜてソート
+        const recent = [
+            ...getArticles().slice(0, 3).map(i => ({...i, type: '記事', action: () => router('articles', i.id)})),
+            ...getVideos().slice(0, 2).map(i => ({...i, type: '動画', action: () => router('videos', i.id)})),
+            ...getTetofu().slice(0, 2).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')}))
+        ].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        recent.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            if (item.externalUrl) {
+                card.onclick = () => window.open(item.externalUrl, '_blank');
+            } else {
+                card.onclick = item.action;
+            }
+            card.innerHTML = `
+                <div class="card-meta"><span style="font-weight:bold; color:var(--accent-color);">${item.type}</span> <span>${item.date}</span></div>
+                <div class="card-title">${item.title}</div>
+                ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
+                <div>${createTagHtml(item.tags)}</div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    // 2. ARTICLES (記事一覧)
+    function renderArticleList() {
+        mainView.innerHTML = `<h2 class="section-title">記事一覧</h2><div class="list-container" id="article-list"></div>`;
+        const list = document.getElementById('article-list');
+        
+        getArticles().forEach(article => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = article.externalUrl ? () => window.open(article.externalUrl, '_blank') : () => router('articles', article.id);
+            
+            card.innerHTML = `
+                <div class="card-meta"><span>${article.date}</span> ${article.externalUrl ? '<span style="color:var(--text-muted)">外部リンク ↗</span>' : ''}</div>
+                <div class="card-title">${article.title}</div>
+                <div class="card-desc">${article.description || ''}</div>
+                <div>${createTagHtml(article.tags)}</div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    // 3. ARTICLE DETAIL (記事詳細 & 関連記事)
+    function renderArticleDetail(id) {
+        const article = getArticles().find(a => a.id === id);
+        if(!article) return router('articles');
+
+        let html = `
+            <div class="article-header">
+                <button class="btn-outline" onclick="router('articles')" style="margin-bottom: 24px;">← 記事一覧に戻る</button>
+                <div class="card-meta">${article.date}</div>
+                <h1 class="article-title">${article.title}</h1>
+                <div>${createTagHtml(article.tags)}</div>
+            </div>
+            <div class="article-body">${marked.parse(article.content)}</div>
+        `;
+
+        // 関連記事のサジェスト（タグの共通数で計算）
+        const related = getArticles()
+            .filter(a => a.id !== id)
+            .map(a => ({ ...a, score: a.tags.filter(t => article.tags.includes(t)).length }))
+            .filter(a => a.score > 0)
+            .sort((a,b) => b.score - a.score).slice(0, 2);
+
+        if(related.length > 0) {
+            html += `<div class="related-section"><h3 style="font-size:18px; margin-bottom:16px;">関連記事</h3><div class="related-grid">`;
+            related.forEach(r => {
+                // 外部リンク判定を追加
+                const clickAction = r.externalUrl ? `window.open('${r.externalUrl}', '_blank')` : `router('articles', '${r.id}')`;
+                const extLabel = r.externalUrl ? ' <span style="color:var(--text-muted); font-size:12px;">外部リンク ↗</span>' : '';
+                html += `
+                    <div class="card" onclick="${clickAction}" style="padding:16px;">
+                        <div class="card-title" style="font-size:16px;">${r.title}</div>
+                        <div class="card-meta" style="margin:0;">${r.date}${extLabel}</div>
+                    </div>`;
+            });
+            html += `</div></div>`;
+        }
+        mainView.innerHTML = html;
+
+        // --- FUMEN EMBED PROCESSING ---
+        // Marked.js converts ```fumen ... ``` to <pre><code class="language-fumen">...</code></pre>
+        document.querySelectorAll('code.language-fumen').forEach(codeBlock => {
+            const rawCode = codeBlock.textContent;
+            const preContainer = codeBlock.parentElement;
+            
+            // Create wrapper
+            const wrapper = document.createElement('div');
+            wrapper.className = 'fumen-canvas-wrapper';
+            
+            // Replace pre with wrapper
+            preContainer.parentNode.insertBefore(wrapper, preContainer);
+            preContainer.style.display = 'none'; // Hide original code
+
+            // Render
+            FumenRenderer.render(wrapper, rawCode);
+        });
+    }
+
+    // 4. VIDEOS (動画一覧)
+    function renderVideoList() {
+        mainView.innerHTML = `<h2 class="section-title">動画研究</h2><div class="list-container" id="video-list"></div>`;
+        const list = document.getElementById('video-list');
+
+        getVideos().forEach(v => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => router('videos', v.id); // 詳細ページへの遷移
+            
+            card.innerHTML = `
+                <div class="card-meta">${v.date}</div>
+                <div class="card-title">${v.title}</div>
+                <div>${createTagHtml(v.tags)}</div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    // 4-2. VIDEO DETAIL (動画詳細)
+    function renderVideoDetail(id) {
+        const v = getVideos().find(video => video.id === id);
+        if(!v) return router('videos');
+
+        ytPlayers = {}; 
+        const playerId = `yt-player-detail`;
+
+        let timestampsHtml = '';
+        if(v.timestamps && v.timestamps.length > 0) {
+            timestampsHtml = `<div class="timestamp-list">`;
+            v.timestamps.forEach(ts => {
+                const m = Math.floor(ts.time / 60);
+                const s = String(ts.time % 60).padStart(2, '0');
+                timestampsHtml += `
+                    <button class="timestamp-btn" onclick="seekVideo('${playerId}', ${ts.time})">
+                        <span class="time-badge">${m}:${s}</span>
+                        <span>${ts.label}</span>
+                    </button>`;
+            });
+            timestampsHtml += `</div>`;
+        }
+
+        mainView.innerHTML = `
+            <div class="article-header">
+                <button class="btn-outline" onclick="router('videos')" style="margin-bottom: 24px;">← 動画一覧に戻る</button>
+                <div class="card-meta">${v.date}</div>
+                <h1 class="article-title">${v.title}</h1>
+                <div>${createTagHtml(v.tags)}</div>
+            </div>
+            <div class="video-wrapper" style="border: 1px solid var(--border-color); border-radius: 8px;"><div id="${playerId}"></div></div>
+            ${timestampsHtml}
+        `;
+        // YouTube Playerの確実な初期化
+        const initYT = () => {
+            if (window.YT && YT.Player) {
+                ytPlayers[playerId] = new YT.Player(playerId, {
+                    videoId: v.youtubeId,
+                    playerVars: { 'rel': 0 }
+                });
+            } else {
+                setTimeout(initYT, 100);
+            }
+        };
+        initYT();
+    }
+
+    window.seekVideo = function(playerId, seconds) {
+        const player = ytPlayers[playerId];
+        if (player && typeof player.seekTo === 'function') {
+            player.seekTo(seconds, true);
+            player.playVideo();
+        }
+    }
+
+    // 5. TETOFU (テト譜)
+    function renderTetofu() {
+        mainView.innerHTML = `<h2 class="section-title">テト譜・盤面アーカイブ</h2><div class="list-container" id="tetofu-list"></div>`;
+        const list = document.getElementById('tetofu-list');
+        
+        getTetofu().forEach(t => {
+            // <a>タグをやめて<div>にすることで、タグクリック時のイベントキャンセリングを機能させる
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => window.open(t.url, '_blank');
+            card.innerHTML = `
+                <div class="card-meta"><span>${t.date}</span> <span style="color:var(--text-muted)">外部リンク ↗</span></div>
+                <div class="card-title">${t.title}</div>
+                <div class="card-desc">${t.notes || ''}</div>
+                <div>${createTagHtml(t.tags)}</div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    // 6. TAGS (タグ一覧 & 検索結果)
+    function renderTagList() {
+        mainView.innerHTML = `<h2 class="section-title">タグ一覧</h2><div class="list-container" style="flex-direction:row; flex-wrap:wrap;" id="tag-cloud"></div>`;
+        const container = document.getElementById('tag-cloud');
+        
+        const allTags = {};
+        const collect = (items) => items.forEach(i => (i.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1));
+        collect(getArticles());
+        collect(getTetofu());
+        
+        // 動画タグ＋タイムスタンプ内のタグも集計
+        getVideos().forEach(v => {
+            (v.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1);
+            (v.timestamps || []).forEach(ts => (ts.tags || []).forEach(t => allTags[t] = (allTags[t] || 0) + 1));
+        });
+        
+        // 件数順にソートして表示
+        Object.entries(allTags).sort((a,b) => b[1] - a[1]).forEach(([tag, count]) => {
+            const el = document.createElement('span');
+            el.className = 'tag';
+            el.style.fontSize = '14px'; el.style.padding = '6px 14px';
+            el.innerHTML = `${tag} (${count})`;
+            el.onclick = () => router('tags', tag);
+            container.appendChild(el);
+        });
+    }
+
+    function renderTagDetail(tagName) {
+        mainView.innerHTML = `
+            <button class="btn-outline" onclick="router('tags')" style="margin-bottom: 24px;">← タグ一覧に戻る</button>
+            <h2 class="section-title">タグ: ${tagName}</h2>
+            <div class="list-container" id="tag-results"></div>
+        `;
+        const list = document.getElementById('tag-results');
+
+        // 全コンテンツから検索（タイムスタンプ内タグも含む）
+        const results = [
+            ...getArticles().filter(a => (a.tags || []).includes(tagName)).map(i => ({...i, type: '記事', action: () => router('articles', i.id)})),
+            ...getTetofu().filter(t => (t.tags || []).includes(tagName)).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')})),
+            ...getVideos().filter(v => {
+                const hasTag = (v.tags || []).includes(tagName);
+                const hasTsTag = (v.timestamps || []).some(ts => (ts.tags || []).includes(tagName));
+                return hasTag || hasTsTag;
+            }).map(i => ({...i, type: '動画', action: () => router('videos', i.id)}))
+        ].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        if(results.length === 0) {
+            list.innerHTML = `<div style="color:var(--text-muted);">該当するコンテンツはありません。</div>`;
+            return;
+        }
+
+        results.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            if (item.externalUrl) {
+                card.onclick = () => window.open(item.externalUrl, '_blank');
+            } else {
+                card.onclick = item.action;
+            }
+            card.innerHTML = `
+                <div class="card-meta"><span style="font-weight:bold; color:var(--accent-color);">${item.type}</span> <span>${item.date}</span></div>
+                <div class="card-title">${item.title}</div>
+                ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
+                <div>${createTagHtml(item.tags)}</div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    window.addEventListener('hashchange', () => {
+        const [page, id] = decodeURIComponent(location.hash.slice(1)).split('/');
+        if (page) router(page, id);
+    });
+    
+    setTimeout(() => {
+        const [page, id] = decodeURIComponent(location.hash.slice(1)).split('/');
+        router(page || 'dashboard', id);
+    }, 100);
+</script>
+</body>
+</html>
