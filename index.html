@@ -20,6 +20,7 @@
         --link-color: #1a73e8;
         --font-main: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
         --max-width: 1200px;
+        /* ワイド表示に対応するため幅を拡大 */
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -159,7 +160,6 @@
         font-weight: 700;
         margin-bottom: 8px;
         line-height: 1.4;
-        /* 色指定を削除し、親要素(黒)を継承 */
     }
     .card-desc {
         font-size: 15px;
@@ -206,6 +206,7 @@
     }
     @media (min-width: 900px) {
         .video-detail-container {
+            /* 修正: 動画をより大きく、テキストエリアを細く */
             grid-template-columns: 2.5fr 1fr;
             align-items: start;
         }
@@ -280,12 +281,11 @@
         color: var(--text-muted);
         margin-bottom: 6px;
         gap: 8px;
-        cursor: pointer; /* クリック可能であることを示す */
-        padding: 2px 4px;
-        border-radius: 4px;
+        cursor: pointer;
+        transition: color 0.2s;
     }
     .preview-ts-item:hover {
-        background: rgba(0,0,0,0.03);
+        color: var(--accent-color);
     }
     .preview-ts-item:last-child { margin-bottom: 0; }
     .ts-badge {
@@ -340,71 +340,9 @@
 <main id="main-view" class="container"></main>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-<script>
-    // 提供された動画データ
-    window.LAB_VIDEOS = [
-        {
-            id: 'top-player-analysis-01',
-            date: '2025-11-20',
-            title: '世界大会決勝: 掘りと相殺管理の完全分析',
-            youtubeId: 'dQw4w9WgXcQ', // 実際の動画IDを入れてください
-            tags: ['大会', 'トッププレイヤー', '解説'],
-            description: '世界大会決勝の第3試合、不利な状況からの逆転劇を徹底的に分析します。特に中盤の掘りの判断が参考になります。',
-            content: `
-### 試合の概要
-この試合は、お互いにリソースを削り合う消耗戦となりました。〇〇選手の粘り強い凝視力が光ります。
-
-[00:45]{下穴,凝視} **下穴を3つ先まで見据えた置き方**
-ここで通常ならTミノを平積みに使いたくなるところですが、あえて右端に立てて置きました。これは3列下にあるGarbage Hole（穴）が右側にあることを見越しての判断です。この一手が後のテトリス消しに繋がります。
-
-[02:00]{相殺外し,リソース} **相殺外しによる意図的なリソース蓄積**
-相手からの4ライン攻撃に対し、あえて相殺せず受け入れました。
-自分のフィールドが低いため、ここでラインを受け入れてカウンターの種（リソース）にする高度な判断です。
-
-> **Point:** フィールドが低い時は、即座に相殺するよりも受け入れた方が火力が出せる場合があります。
-
-[04:15]{掘り,判断} **Iミノを温存したまま掘る**
-非常に危険な地形ですが、ホールドにあるIミノを使わずにSミノとZミノだけで地形を整えました。「ここでIミノを使ってしまうと、その後の火力が出ない」という冷静な判断が見て取れます。
-
-### 総評
-全体を通して、目先のライン消去よりも「3手先の地形」を優先するプレイングが徹底されていました。
-            `
-        },
-        {
-            id: 'ren-practice-01',
-            date: '2025-11-25',
-            title: '中開けRENの基本パターン',
-            youtubeId: 'M7lc1UVf-VE',
-            tags: ['REN', 'テンプレ'],
-            description: '汎用性の高い中開けRENの積み込みパターンをいくつか紹介します。',
-            content: `
-REN（連鎖）は現代テトリスにおいて必須技術です。特に中開けは地形を選ばず組みやすいのが特徴です。
-
-[00:10]{基礎} **3列空けの基本形**
-最もオーソドックスな形です。左右のバランスを取りやすく、暴発しにくいのがメリットです。
-
-[01:25]{派生} **S/Zミノが偏った場合の対処**
-SやZばかり来た場合、このように無理やり端に寄せて平らにすることで、後のREN継続率を高めることができます。
-
-[03:40]{リカバリー} **ミスからの復帰**
-置きミスをしてしまった直後の修正手順です。Tスピンを作るのではなく、一度ラインを消して整地することに専念しています。
-            `
-        }
-    ];
-
-    // ダミーのデータ（エラー防止のため）
-    window.LAB_ARTICLES = window.LAB_ARTICLES || [
-        { id: 'dummy-1', date: '2025-10-01', title: 'テトリスの基礎知識', tags: ['初心者'], content: 'これはダミー記事です。', description: '記事データのサンプルです。' }
-    ];
-    window.LAB_TETOFU = window.LAB_TETOFU || [
-        { url: 'https://example.com', date: '2025-09-15', title: '開幕TSD', tags: ['テンプレ'], notes: 'サンプル' }
-    ];
-</script>
-
-<script src="data/articles.js" onerror="console.log('articles.js not found, using dummy')"></script>
-<script src="data/videos.js" onerror="console.log('videos.js not found, using embedded')"></script>
-<script src="data/tetofu.js" onerror="console.log('tetofu.js not found, using dummy')"></script>
+<script src="data/articles.js"></script>
+<script src="data/videos.js"></script>
+<script src="data/tetofu.js"></script>
 
 <script>
     // --- データ取得ヘルパー ---
@@ -413,32 +351,34 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
     const getTetofu = () => (window.LAB_TETOFU || []).sort((a,b) => new Date(b.date) - new Date(a.date));
 
     // YouTube API連携用
-    let ytPlayers = {};
-    let isYTApiReady = false;
-    function onYouTubeIframeAPIReady() { 
-        isYTApiReady = true;
-    }
+    let detailPlayer = null;    // 詳細ページのプレイヤー
+    let listPlayers = {};       // リスト表示用プレイヤー { domId: YT.Player }
+    
+    function onYouTubeIframeAPIReady() { /* 動的生成のため空 */ }
 
     // タグHTML生成
     const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.preventDefault(); event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
 
-    // タイムスタンプ抽出用正規表現
+    // タイムスタンプ抽出用正規表現: [01:30]{tag1,tag2} 説明文...
     const TS_REGEX = /\[(\d{1,2}):(\d{2})\](?:\{([^}]+)\})?/g;
     const TS_LINE_REGEX = /^\[(\d{1,2}):(\d{2})\](?:\{([^}]+)\})?\s*(.*)$/gm;
 
     // --- ルーティング ---
     const mainView = document.getElementById('main-view');
+    
     function router(page, id = null, query = null) {
+        // 現在のハッシュと比較し、違う場合のみURL更新
         let targetHash = page;
         if (id) targetHash += `/${id}`;
         if (query) targetHash += `?q=${encodeURIComponent(query)}`;
 
-        // 【修正】検索時などハッシュが同じでも強制的に再描画させるため、return を削除しました
-        if (decodeURIComponent(location.hash) !== '#' + targetHash) {
+        // デコードした状態で比較しないと、エンコードされた文字を含む場合に無限ループや不一致が起きる
+        const currentHashDecoded = decodeURIComponent(location.hash.slice(1));
+        const targetHashDecoded = decodeURIComponent(targetHash);
+
+        if (currentHashDecoded !== targetHashDecoded) {
             location.hash = targetHash;
-            // ハッシュ変更イベントで再度呼ばれるので、ここでは一旦終了してもよいが
-            // 明示的な呼び出しに対応するため続行させる、またはイベントに任せる設計。
-            // ここでは安全のためイベントリスナーに任せて終了する（二重描画防止）
+            // hashを変更するとhashchangeイベントが発火するので、ここでは描画しない
             return;
         }
 
@@ -447,11 +387,12 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
         const activeTab = document.querySelector(`.nav-item[onclick="router('${page}')"]`);
         if(activeTab) activeTab.classList.add('active');
 
-        mainView.innerHTML = '';
+        // ページ遷移時はスクロールリセット
         window.scrollTo({top: 0, behavior: 'smooth'});
-
-        // 古いプレイヤーの参照をクリア（メモリリーク防止のため簡易的に）
-        ytPlayers = {};
+        
+        // メインビューのクリアとプレイヤーのリセット
+        listPlayers = {}; // リスト用プレイヤー参照をクリア
+        mainView.innerHTML = '';
 
         switch(page) {
             case 'dashboard': renderDashboard(); break;
@@ -463,14 +404,15 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
         }
     }
 
-    // --- 検索機能 (修正版) ---
+    // --- 検索機能 ---
     function handleSearch(e) {
         if(e.key === 'Enter') {
-            e.preventDefault(); // フォーム送信などを防止
             const query = e.target.value.trim();
             if(query) {
-                // ハッシュを書き換える。これが hashchange イベントを発火させ、router('search', null, query) が呼ばれる
+                // 明示的にrouterを呼び出す（ハッシュが同じでも検索結果を再描画したい場合があるため）
+                // ただし、router側でハッシュ比較が入るので、ハッシュ書き換えのみ行う
                 location.hash = `search?q=${encodeURIComponent(query)}`;
+                e.target.blur(); // キーボードを閉じる
             }
         }
     }
@@ -486,6 +428,7 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
         const list = document.getElementById('search-results');
         const q = decodeURIComponent(query).toLowerCase();
 
+        // 全コンテンツから検索
         const results = [];
         // 1. Articles
         getArticles().forEach(a => {
@@ -521,15 +464,15 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
         const card = document.createElement('div');
         card.className = 'card';
         
-        // 動画の場合、タイトルクリックで遷移、その他は全体クリック
-        // ※動画プレイヤー部分はクリックで遷移しないように制御
+        // 動画の場合はカードクリックで遷移させない（プレイヤー操作の邪魔になるため）
         if(item.type !== '動画') {
-            card.onclick = item.externalUrl ? () => window.open(item.externalUrl, '_blank') : item.action;
+            card.onclick = item.externalUrl ?
+                () => window.open(item.externalUrl, '_blank') : item.action;
         }
 
-        // 動画プレイヤー用のユニークID生成
-        const uniqueSuffix = Math.random().toString(36).substring(7);
-        const playerId = item.type === '動画' ? `yt-card-${item.id}-${uniqueSuffix}` : null;
+        // 動画用の一意なIDを生成
+        const uniqueId = Math.random().toString(36).substr(2, 9);
+        const playerDomId = item.type === '動画' ? `yt-list-${item.id}-${uniqueId}` : null;
 
         // プレビュー用に動画のタイムスタンプを抽出
         let tsPreview = '';
@@ -545,12 +488,12 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
                     if (highlightTag && !tags.includes(highlightTag)) return;
                     if (!highlightTag && count >= 3) return;
 
-                    const timeSec = parseInt(min)*60 + parseInt(sec);
                     const timeStr = `${min}:${sec}`;
+                    const timeSec = parseInt(min) * 60 + parseInt(sec);
                     
-                    // 【修正】onclickでこのカードのプレイヤーをシークさせる (stopPropagationで親の遷移イベントを止める)
+                    // 修正: カード内のプレイヤーを操作するonclickイベントを設定
                     tsPreview += `
-                        <div class="preview-ts-item" onclick="event.stopPropagation(); seekVideo('${playerId}', ${timeSec})">
+                        <div class="preview-ts-item" onclick="seekListVideo('${playerDomId}', ${timeSec}, event)">
                             <span class="ts-badge">▶ ${timeStr}</span>
                             <span>${desc.substring(0, 40)}${desc.length>40?'...':''}</span>
                         </div>`;
@@ -560,16 +503,16 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
             }
         }
 
-        // 動画プレイヤーの埋め込み (Iframe API使用)
+        // 動画プレイヤーの埋め込み (YouTube API用Div)
         let videoEmbed = '';
         if (item.type === '動画' && item.youtubeId) {
             videoEmbed = `
             <div class="video-wrapper" style="margin-bottom:16px;">
-                <div id="${playerId}"></div>
+                <div id="${playerDomId}"></div>
             </div>`;
         }
 
-        // 【修正】タイトル色: link-colorの指定を削除
+        // 修正: タイトル色を修正（黒に戻す）
         const titleHtml = item.type === '動画' 
             ? `<div class="card-title" onclick="router('videos', '${item.id}')" style="cursor:pointer;">${item.title}</div>`
             : `<div class="card-title">${item.title}</div>`;
@@ -588,23 +531,14 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
         `;
         container.appendChild(card);
 
-        // YouTubeプレイヤーの初期化 (DOMに追加された後)
-        if (item.type === '動画' && item.youtubeId && playerId) {
-            // APIロード待ちを含めた初期化処理
-            const initPlayer = () => {
-                if (window.YT && window.YT.Player) {
-                    ytPlayers[playerId] = new YT.Player(playerId, {
-                        videoId: item.youtubeId,
-                        playerVars: { 'rel': 0 },
-                        height: '100%',
-                        width: '100%'
-                    });
-                } else {
-                    setTimeout(initPlayer, 200);
-                }
-            };
-            // 少し遅らせて実行（DOM描画確実化）
-            setTimeout(initPlayer, 50);
+        // カード追加後にYouTubeプレイヤーを初期化
+        if (item.type === '動画' && item.youtubeId && window.YT && window.YT.Player) {
+            listPlayers[playerDomId] = new YT.Player(playerDomId, {
+                videoId: item.youtubeId,
+                height: '100%',
+                width: '100%',
+                playerVars: { 'rel': 0 }
+            });
         }
     }
 
@@ -666,15 +600,15 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
         });
     }
 
-    // 4-2. VIDEO DETAIL
+    // 4-2. VIDEO DETAIL (詳細ページ)
     function renderVideoDetail(id) {
         const v = getVideos().find(video => video.id === id);
         if(!v) return router('videos');
 
-        // 古いプレイヤー情報をクリア
+        detailPlayer = null; 
         const playerId = `yt-player-detail`;
-        
-        // Markdown内の [mm:ss]{tag} をインタラクティブなHTMLに変換
+
+        // Markdown内の [mm:ss]{tag} を詳細プレイヤー操作用に変換
         const rawContent = v.content || "";
         const processedContent = rawContent.replace(TS_REGEX, (match, min, sec, tagsRaw) => {
             const time = parseInt(min) * 60 + parseInt(sec);
@@ -683,7 +617,8 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
             if(tagsRaw) {
                 tagHtml = tagsRaw.split(',').map(t => `<span class="tag" style="margin-left:4px; font-size:11px; padding:1px 6px;">${t.trim()}</span>`).join('');
             }
-            return `<a class="ts-link" onclick="seekVideo('${playerId}', ${time})">▶ ${timeStr}</a>${tagHtml}`;
+            // 詳細ページでは detailPlayer (seekVideo) を使う
+            return `<a class="ts-link" onclick="seekDetailVideo(${time})">▶ ${timeStr}</a>${tagHtml}`;
         });
 
         const html = `
@@ -695,10 +630,10 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
                         <div id="${playerId}"></div>
                     </div>
                     <div class="video-controls">
-                        <button class="rate-btn" onclick="changeRate('${playerId}', 0.25)">x0.25</button>
-                        <button class="rate-btn" onclick="changeRate('${playerId}', 0.5)">x0.5</button>
-                        <button class="rate-btn active" onclick="changeRate('${playerId}', 1.0)">x1.0</button>
-                        <button class="rate-btn" onclick="changeRate('${playerId}', 1.5)">x1.5</button>
+                        <button class="rate-btn" onclick="changeRate(0.25)">x0.25</button>
+                        <button class="rate-btn" onclick="changeRate(0.5)">x0.5</button>
+                        <button class="rate-btn active" onclick="changeRate(1.0)">x1.0</button>
+                        <button class="rate-btn" onclick="changeRate(1.5)">x1.5</button>
                     </div>
                     
                     <h1 class="article-title" style="font-size:24px;">${v.title}</h1>
@@ -715,7 +650,7 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
 
         const initYT = () => {
             if (window.YT && YT.Player) {
-                ytPlayers[playerId] = new YT.Player(playerId, {
+                detailPlayer = new YT.Player(playerId, {
                     videoId: v.youtubeId,
                     playerVars: { 'rel': 0 }
                 });
@@ -726,27 +661,41 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
         initYT();
     }
 
-    // 動画操作関数
-    window.seekVideo = function(playerId, seconds) {
-        const player = ytPlayers[playerId];
-        if (player && typeof player.seekTo === 'function') {
-            player.seekTo(seconds, true);
-            player.playVideo();
-        } else {
-            console.warn("Player not found or not ready:", playerId);
+    // --- プレイヤー操作関数 ---
+
+    // 1. 詳細ページ用
+    window.seekDetailVideo = function(seconds) {
+        if (detailPlayer && typeof detailPlayer.seekTo === 'function') {
+            detailPlayer.seekTo(seconds, true);
+            detailPlayer.playVideo();
         }
     }
     
-    window.changeRate = function(playerId, rate) {
-        const player = ytPlayers[playerId];
-        if (player && typeof player.setPlaybackRate === 'function') {
-            player.setPlaybackRate(rate);
+    window.changeRate = function(rate) {
+        if (detailPlayer && typeof detailPlayer.setPlaybackRate === 'function') {
+            detailPlayer.setPlaybackRate(rate);
             const container = document.querySelector('.video-controls');
             if(container) {
                 container.querySelectorAll('.rate-btn').forEach(btn => {
                     btn.classList.toggle('active', btn.innerText.includes(rate));
                 });
             }
+        }
+    }
+
+    // 2. リストカード用（修正: その場の動画を操作）
+    window.seekListVideo = function(playerDomId, seconds, event) {
+        if(event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        const player = listPlayers[playerDomId];
+        if (player && typeof player.seekTo === 'function') {
+            player.seekTo(seconds, true);
+            player.playVideo();
+        } else {
+            console.warn("Player not found or not ready:", playerDomId);
         }
     }
 
@@ -770,6 +719,7 @@ SやZばかり来た場合、このように無理やり端に寄せて平らに
         getArticles().forEach(i => collect(i.tags));
         getTetofu().forEach(i => collect(i.tags));
         
+        // 動画: Mainタグとコンテンツ内のタグを収集
         getVideos().forEach(v => {
             collect(v.tags);
             const matches = [...v.content.matchAll(TS_REGEX)];
