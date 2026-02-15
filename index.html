@@ -425,31 +425,41 @@
             <h2 class="section-title">検索結果: "${decodeURIComponent(query)}"</h2>
             <div class="list-container" id="search-results"></div>
         `;
-        const list = document.getElementById('search-results');
-        const q = decodeURIComponent(query).toLowerCase();
-
-        // 全コンテンツから検索
+                const list = document.getElementById('search-results');
+        const queryWords = decodeURIComponent(query).toLowerCase().split(/\s+/).filter(w => w);
         const results = [];
-        // 1. Articles
+
+        const isMatch = (item) => {
+            const textToSearch = [
+                item.title,
+                item.description,
+                item.content,
+                item.notes,
+                (item.tags || []).join(' ')
+            ].filter(Boolean).join(' ').toLowerCase();
+            return queryWords.every(word => textToSearch.includes(word));
+        };
+
         getArticles().forEach(a => {
-            if(a.title.toLowerCase().includes(q) || a.content.toLowerCase().includes(q) || (a.tags||[]).some(t=>t.toLowerCase().includes(q))) {
+            if(isMatch(a)) {
                 results.push({...a, type: '記事', action: () => router('articles', a.id)});
             }
         });
-        // 2. Videos
+
         getVideos().forEach(v => {
-            if(v.title.toLowerCase().includes(q) || v.content.toLowerCase().includes(q) || (v.tags||[]).some(t=>t.toLowerCase().includes(q))) {
+            if(isMatch(v)) {
                 results.push({...v, type: '動画', action: () => router('videos', v.id)});
             }
         });
-        // 3. Tetofu
+
         getTetofu().forEach(t => {
-            if(t.title.toLowerCase().includes(q) || (t.notes||'').toLowerCase().includes(q) || (t.tags||[]).some(t=>t.toLowerCase().includes(q))) {
+            if(isMatch(t)) {
                 results.push({...t, type: 'テト譜', action: () => window.open(t.url, '_blank')});
             }
         });
 
         if(results.length === 0) {
+
             list.innerHTML = `<div style="color:var(--text-muted);">該当するコンテンツは見つかりませんでした。</div>`;
             return;
         }
