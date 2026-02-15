@@ -19,7 +19,7 @@
         --accent-color: #2cb696;
         --link-color: #1a73e8;
         --font-main: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-        --max-width: 1000px; /* ワイド表示に対応するため少し広げる */
+        --max-width: 1200px; /* ワイド表示に対応するため幅を拡大 */
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -101,7 +101,8 @@
     }
     .search-input:focus { border-color: var(--accent-color); background: #fff; }
     .search-icon {
-        position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+        position: absolute; left: 10px; top: 50%;
+        transform: translateY(-50%);
         color: var(--text-muted); font-size: 12px; pointer-events: none;
     }
 
@@ -204,7 +205,8 @@
     }
     @media (min-width: 900px) {
         .video-detail-container {
-            grid-template-columns: 1.2fr 1fr; /* Video area : Text area */
+            /* 修正: 動画をより大きく、テキストエリアを細く */
+            grid-template-columns: 2.5fr 1fr; 
             align-items: start;
         }
         .video-sticky-area {
@@ -348,7 +350,7 @@
 
     // タグHTML生成
     const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.preventDefault(); event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
-    
+
     // タイムスタンプ抽出用正規表現: [01:30]{tag1,tag2} 説明文...
     // Group 1: 分, Group 2: 秒, Group 3: タグ(optional), Group 4: 残りのテキスト
     const TS_REGEX = /\[(\d{1,2}):(\d{2})\](?:\{([^}]+)\})?/g;
@@ -356,15 +358,20 @@
 
     // --- ルーティング ---
     const mainView = document.getElementById('main-view');
-    
+
     function router(page, id = null, query = null) {
+        // 現在のハッシュと比較し、違う場合のみURL更新
         let targetHash = page;
         if (id) targetHash += `/${id}`;
         if (query) targetHash += `?q=${encodeURIComponent(query)}`;
-
+        
+        // 注意: 以前のロジックではここで return していたため、ハッシュ変更イベント経由で呼ばれた場合のみ描画されていた。
+        // 強制的にURLを書き換えるが、描画ロジックは下に流す。
         if (decodeURIComponent(location.hash) !== '#' + targetHash) {
             location.hash = targetHash;
-            return;
+            // ハッシュを変更すると hashchange イベントが発火するため、ここで処理を終えると2回実行されるのを防げる
+            // ただし、Searchの場合は明示的に呼びたいケースがあるため、イベントリスナー側を正とする
+            return; 
         }
 
         // ナビゲーションのハイライト更新
@@ -385,23 +392,27 @@
         }
     }
 
-    // --- 検索機能 ---
+    // --- 検索機能 (修正版) ---
     function handleSearch(e) {
         if(e.key === 'Enter') {
             const query = e.target.value.trim();
-            if(query) router('search', null, query);
+            if(query) {
+                // ハッシュを直接書き換えてイベントを発火させる
+                location.hash = `search?q=${encodeURIComponent(query)}`;
+            }
         }
     }
 
     function renderSearchResults(query) {
         if(!query) return router('dashboard');
+
         mainView.innerHTML = `
             <button class="btn-outline" onclick="router('dashboard')" style="margin-bottom: 24px;">← ホームに戻る</button>
-            <h2 class="section-title">検索結果: "${query}"</h2>
+            <h2 class="section-title">検索結果: "${decodeURIComponent(query)}"</h2>
             <div class="list-container" id="search-results"></div>
         `;
         const list = document.getElementById('search-results');
-        const q = query.toLowerCase();
+        const q = decodeURIComponent(query).toLowerCase();
 
         // 全コンテンツから検索
         const results = [];
@@ -412,12 +423,14 @@
                 results.push({...a, type: '記事', action: () => router('articles', a.id)});
             }
         });
+
         // 2. Videos (Markdownの中身も検索)
         getVideos().forEach(v => {
             if(v.title.toLowerCase().includes(q) || v.content.toLowerCase().includes(q) || (v.tags||[]).some(t=>t.toLowerCase().includes(q))) {
                 results.push({...v, type: '動画', action: () => router('videos', v.id)});
             }
         });
+
         // 3. Tetofu
         getTetofu().forEach(t => {
             if(t.title.toLowerCase().includes(q) || (t.notes||'').toLowerCase().includes(q) || (t.tags||[]).some(t=>t.toLowerCase().includes(q))) {
@@ -439,7 +452,11 @@
     function renderCard(container, item, highlightTag = null) {
         const card = document.createElement('div');
         card.className = 'card';
-        card.onclick = item.externalUrl ? () => window.open(item.externalUrl, '_blank') : item.action;
+        // 動画の場合はカードクリックで遷移させない（プレイヤー操作の邪魔になるため）
+        // タイトル部分のみ遷移させる形にするか、あるいは全体リンクにするがプレイヤーはクリックイベントを止める
+        if(item.type !== '動画') {
+            card.onclick = item.externalUrl ? () => window.open(item.externalUrl, '_blank') : item.action;
+        }
 
         // プレビュー用に動画のタイムスタンプを抽出 (タグフィルタがある場合はフィルタリング)
         let tsPreview = '';
@@ -468,13 +485,27 @@
             }
         }
 
+        // 動画プレイヤーの埋め込み (サムネイル代わり)
+        let videoEmbed = '';
+        if (item.type === '動画' && item.youtubeId) {
+            videoEmbed = `
+            <div class="video-wrapper" style="margin-bottom:16px;">
+                <iframe src="https://www.youtube.com/embed/${item.youtubeId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>`;
+        }
+
+        const titleHtml = item.type === '動画' 
+            ? `<div class="card-title" onclick="router('videos', '${item.id}')" style="cursor:pointer; color:var(--link-color);">${item.title}</div>`
+            : `<div class="card-title">${item.title}</div>`;
+
         card.innerHTML = `
             <div class="card-meta">
                 <span style="font-weight:bold; color:var(--accent-color);">${item.type || 'Note'}</span> 
                 <span>${item.date}</span>
                 ${item.externalUrl ? '<span style="color:var(--text-muted)">外部リンク ↗</span>' : ''}
             </div>
-            <div class="card-title">${item.title}</div>
+            ${videoEmbed}
+            ${titleHtml}
             ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
             <div>${createTagHtml(item.tags)}</div>
             ${tsPreview}
@@ -501,7 +532,7 @@
             ...getVideos().slice(0, 3).map(i => ({...i, type: '動画', action: () => router('videos', i.id)})),
             ...getTetofu().slice(0, 2).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')}))
         ].sort((a,b) => new Date(b.date) - new Date(a.date));
-
+        
         recent.forEach(item => renderCard(list, item));
     }
 
@@ -528,7 +559,6 @@
             </div>
             <div class="article-body">${marked.parse(article.content)}</div>
         `;
-        // 関連記事ロジックは簡略化のため省略（必要であれば元のコードから移植可能）
         mainView.innerHTML = html;
     }
 
@@ -550,7 +580,6 @@
         const playerId = `yt-player-detail`;
 
         // Markdown内の [mm:ss]{tag} をインタラクティブなHTMLに変換
-        // 変換ロジック: [01:30]{Tag} -> <a onclick="seek...">01:30</a> <span class="tag">Tag</span>
         const rawContent = v.content || "";
         const processedContent = rawContent.replace(TS_REGEX, (match, min, sec, tagsRaw) => {
             const time = parseInt(min) * 60 + parseInt(sec);
@@ -587,6 +616,7 @@
                 </div>
             </div>
         `;
+
         mainView.innerHTML = html;
 
         const initYT = () => {
@@ -641,7 +671,7 @@
         
         const allTags = {};
         const collect = (tags) => (tags||[]).forEach(t => allTags[t] = (allTags[t] || 0) + 1);
-
+        
         getArticles().forEach(i => collect(i.tags));
         getTetofu().forEach(i => collect(i.tags));
         
@@ -665,20 +695,21 @@
     }
 
     function renderTagDetail(tagName) {
+        // デコードして表示
+        const decodedTag = decodeURIComponent(tagName);
         mainView.innerHTML = `
             <button class="btn-outline" onclick="router('tags')" style="margin-bottom: 24px;">← タグ一覧に戻る</button>
-            <h2 class="section-title">タグ: ${tagName}</h2>
+            <h2 class="section-title">タグ: ${decodedTag}</h2>
             <div class="list-container" id="tag-results"></div>
         `;
         const list = document.getElementById('tag-results');
 
         const results = [
-            ...getArticles().filter(a => (a.tags || []).includes(tagName)).map(i => ({...i, type: '記事', action: () => router('articles', i.id)})),
-            ...getTetofu().filter(t => (t.tags || []).includes(tagName)).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')})),
+            ...getArticles().filter(a => (a.tags || []).includes(decodedTag)).map(i => ({...i, type: '記事', action: () => router('articles', i.id)})),
+            ...getTetofu().filter(t => (t.tags || []).includes(decodedTag)).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')})),
             ...getVideos().filter(v => {
-                // 記事全体のタグ または 本文内のタグに一致するか
-                const hasMainTag = (v.tags || []).includes(tagName);
-                const hasContentTag = v.content.includes(`{${tagName}}`) || v.content.includes(`,${tagName}}`) || v.content.includes(`{${tagName},`);
+                const hasMainTag = (v.tags || []).includes(decodedTag);
+                const hasContentTag = v.content.includes(`{${decodedTag}}`) || v.content.includes(`,${decodedTag}}`) || v.content.includes(`{${decodedTag},`);
                 return hasMainTag || hasContentTag;
             }).map(i => ({...i, type: '動画', action: () => router('videos', i.id)}))
         ].sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -689,8 +720,7 @@
         }
 
         results.forEach(item => {
-            // 動画の場合、リスト表示でそのタグが付いたタイムスタンプを優先表示する
-            renderCard(list, item, tagName);
+            renderCard(list, item, decodedTag);
         });
     }
 
@@ -707,11 +737,12 @@
         }
         router(page || 'dashboard', id, query);
     });
-    
+
     setTimeout(() => {
         if(!location.hash) router('dashboard');
         else window.dispatchEvent(new HashChangeEvent("hashchange"));
     }, 100);
+
 </script>
 </body>
 </html>
