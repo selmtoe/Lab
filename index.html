@@ -19,7 +19,7 @@
         --accent-color: #2cb696;
         --link-color: #1a73e8;
         --font-main: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-        --max-width: 1200px; /* ワイド表示に対応するため幅を拡大 */
+        --max-width: 1200px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -159,6 +159,7 @@
         font-weight: 700;
         margin-bottom: 8px;
         line-height: 1.4;
+        /* 色指定を削除し、親要素(黒)を継承 */
     }
     .card-desc {
         font-size: 15px;
@@ -205,8 +206,7 @@
     }
     @media (min-width: 900px) {
         .video-detail-container {
-            /* 修正: 動画をより大きく、テキストエリアを細く */
-            grid-template-columns: 2.5fr 1fr; 
+            grid-template-columns: 2.5fr 1fr;
             align-items: start;
         }
         .video-sticky-area {
@@ -224,7 +224,7 @@
         background: #000;
         margin-bottom: 16px;
     }
-    .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+    .video-wrapper iframe, .video-wrapper div { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
 
     /* Video Controls */
     .video-controls {
@@ -280,6 +280,12 @@
         color: var(--text-muted);
         margin-bottom: 6px;
         gap: 8px;
+        cursor: pointer; /* クリック可能であることを示す */
+        padding: 2px 4px;
+        border-radius: 4px;
+    }
+    .preview-ts-item:hover {
+        background: rgba(0,0,0,0.03);
     }
     .preview-ts-item:last-child { margin-bottom: 0; }
     .ts-badge {
@@ -334,9 +340,71 @@
 <main id="main-view" class="container"></main>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="data/articles.js"></script>
-<script src="data/videos.js"></script>
-<script src="data/tetofu.js"></script>
+
+<script>
+    // 提供された動画データ
+    window.LAB_VIDEOS = [
+        {
+            id: 'top-player-analysis-01',
+            date: '2025-11-20',
+            title: '世界大会決勝: 掘りと相殺管理の完全分析',
+            youtubeId: 'dQw4w9WgXcQ', // 実際の動画IDを入れてください
+            tags: ['大会', 'トッププレイヤー', '解説'],
+            description: '世界大会決勝の第3試合、不利な状況からの逆転劇を徹底的に分析します。特に中盤の掘りの判断が参考になります。',
+            content: `
+### 試合の概要
+この試合は、お互いにリソースを削り合う消耗戦となりました。〇〇選手の粘り強い凝視力が光ります。
+
+[00:45]{下穴,凝視} **下穴を3つ先まで見据えた置き方**
+ここで通常ならTミノを平積みに使いたくなるところですが、あえて右端に立てて置きました。これは3列下にあるGarbage Hole（穴）が右側にあることを見越しての判断です。この一手が後のテトリス消しに繋がります。
+
+[02:00]{相殺外し,リソース} **相殺外しによる意図的なリソース蓄積**
+相手からの4ライン攻撃に対し、あえて相殺せず受け入れました。
+自分のフィールドが低いため、ここでラインを受け入れてカウンターの種（リソース）にする高度な判断です。
+
+> **Point:** フィールドが低い時は、即座に相殺するよりも受け入れた方が火力が出せる場合があります。
+
+[04:15]{掘り,判断} **Iミノを温存したまま掘る**
+非常に危険な地形ですが、ホールドにあるIミノを使わずにSミノとZミノだけで地形を整えました。「ここでIミノを使ってしまうと、その後の火力が出ない」という冷静な判断が見て取れます。
+
+### 総評
+全体を通して、目先のライン消去よりも「3手先の地形」を優先するプレイングが徹底されていました。
+            `
+        },
+        {
+            id: 'ren-practice-01',
+            date: '2025-11-25',
+            title: '中開けRENの基本パターン',
+            youtubeId: 'M7lc1UVf-VE',
+            tags: ['REN', 'テンプレ'],
+            description: '汎用性の高い中開けRENの積み込みパターンをいくつか紹介します。',
+            content: `
+REN（連鎖）は現代テトリスにおいて必須技術です。特に中開けは地形を選ばず組みやすいのが特徴です。
+
+[00:10]{基礎} **3列空けの基本形**
+最もオーソドックスな形です。左右のバランスを取りやすく、暴発しにくいのがメリットです。
+
+[01:25]{派生} **S/Zミノが偏った場合の対処**
+SやZばかり来た場合、このように無理やり端に寄せて平らにすることで、後のREN継続率を高めることができます。
+
+[03:40]{リカバリー} **ミスからの復帰**
+置きミスをしてしまった直後の修正手順です。Tスピンを作るのではなく、一度ラインを消して整地することに専念しています。
+            `
+        }
+    ];
+
+    // ダミーのデータ（エラー防止のため）
+    window.LAB_ARTICLES = window.LAB_ARTICLES || [
+        { id: 'dummy-1', date: '2025-10-01', title: 'テトリスの基礎知識', tags: ['初心者'], content: 'これはダミー記事です。', description: '記事データのサンプルです。' }
+    ];
+    window.LAB_TETOFU = window.LAB_TETOFU || [
+        { url: 'https://example.com', date: '2025-09-15', title: '開幕TSD', tags: ['テンプレ'], notes: 'サンプル' }
+    ];
+</script>
+
+<script src="data/articles.js" onerror="console.log('articles.js not found, using dummy')"></script>
+<script src="data/videos.js" onerror="console.log('videos.js not found, using embedded')"></script>
+<script src="data/tetofu.js" onerror="console.log('tetofu.js not found, using dummy')"></script>
 
 <script>
     // --- データ取得ヘルパー ---
@@ -346,32 +414,32 @@
 
     // YouTube API連携用
     let ytPlayers = {};
-    function onYouTubeIframeAPIReady() { /* 動的生成のため空 */ }
+    let isYTApiReady = false;
+    function onYouTubeIframeAPIReady() { 
+        isYTApiReady = true;
+    }
 
     // タグHTML生成
     const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.preventDefault(); event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
 
-    // タイムスタンプ抽出用正規表現: [01:30]{tag1,tag2} 説明文...
-    // Group 1: 分, Group 2: 秒, Group 3: タグ(optional), Group 4: 残りのテキスト
+    // タイムスタンプ抽出用正規表現
     const TS_REGEX = /\[(\d{1,2}):(\d{2})\](?:\{([^}]+)\})?/g;
     const TS_LINE_REGEX = /^\[(\d{1,2}):(\d{2})\](?:\{([^}]+)\})?\s*(.*)$/gm;
 
     // --- ルーティング ---
     const mainView = document.getElementById('main-view');
-
     function router(page, id = null, query = null) {
-        // 現在のハッシュと比較し、違う場合のみURL更新
         let targetHash = page;
         if (id) targetHash += `/${id}`;
         if (query) targetHash += `?q=${encodeURIComponent(query)}`;
-        
-        // 注意: 以前のロジックではここで return していたため、ハッシュ変更イベント経由で呼ばれた場合のみ描画されていた。
-        // 強制的にURLを書き換えるが、描画ロジックは下に流す。
+
+        // 【修正】検索時などハッシュが同じでも強制的に再描画させるため、return を削除しました
         if (decodeURIComponent(location.hash) !== '#' + targetHash) {
             location.hash = targetHash;
-            // ハッシュを変更すると hashchange イベントが発火するため、ここで処理を終えると2回実行されるのを防げる
-            // ただし、Searchの場合は明示的に呼びたいケースがあるため、イベントリスナー側を正とする
-            return; 
+            // ハッシュ変更イベントで再度呼ばれるので、ここでは一旦終了してもよいが
+            // 明示的な呼び出しに対応するため続行させる、またはイベントに任せる設計。
+            // ここでは安全のためイベントリスナーに任せて終了する（二重描画防止）
+            return;
         }
 
         // ナビゲーションのハイライト更新
@@ -381,6 +449,9 @@
 
         mainView.innerHTML = '';
         window.scrollTo({top: 0, behavior: 'smooth'});
+
+        // 古いプレイヤーの参照をクリア（メモリリーク防止のため簡易的に）
+        ytPlayers = {};
 
         switch(page) {
             case 'dashboard': renderDashboard(); break;
@@ -395,9 +466,10 @@
     // --- 検索機能 (修正版) ---
     function handleSearch(e) {
         if(e.key === 'Enter') {
+            e.preventDefault(); // フォーム送信などを防止
             const query = e.target.value.trim();
             if(query) {
-                // ハッシュを直接書き換えてイベントを発火させる
+                // ハッシュを書き換える。これが hashchange イベントを発火させ、router('search', null, query) が呼ばれる
                 location.hash = `search?q=${encodeURIComponent(query)}`;
             }
         }
@@ -414,23 +486,19 @@
         const list = document.getElementById('search-results');
         const q = decodeURIComponent(query).toLowerCase();
 
-        // 全コンテンツから検索
         const results = [];
-        
         // 1. Articles
         getArticles().forEach(a => {
             if(a.title.toLowerCase().includes(q) || a.content.toLowerCase().includes(q) || (a.tags||[]).some(t=>t.toLowerCase().includes(q))) {
                 results.push({...a, type: '記事', action: () => router('articles', a.id)});
             }
         });
-
-        // 2. Videos (Markdownの中身も検索)
+        // 2. Videos
         getVideos().forEach(v => {
             if(v.title.toLowerCase().includes(q) || v.content.toLowerCase().includes(q) || (v.tags||[]).some(t=>t.toLowerCase().includes(q))) {
                 results.push({...v, type: '動画', action: () => router('videos', v.id)});
             }
         });
-
         // 3. Tetofu
         getTetofu().forEach(t => {
             if(t.title.toLowerCase().includes(q) || (t.notes||'').toLowerCase().includes(q) || (t.tags||[]).some(t=>t.toLowerCase().includes(q))) {
@@ -452,13 +520,18 @@
     function renderCard(container, item, highlightTag = null) {
         const card = document.createElement('div');
         card.className = 'card';
-        // 動画の場合はカードクリックで遷移させない（プレイヤー操作の邪魔になるため）
-        // タイトル部分のみ遷移させる形にするか、あるいは全体リンクにするがプレイヤーはクリックイベントを止める
+        
+        // 動画の場合、タイトルクリックで遷移、その他は全体クリック
+        // ※動画プレイヤー部分はクリックで遷移しないように制御
         if(item.type !== '動画') {
             card.onclick = item.externalUrl ? () => window.open(item.externalUrl, '_blank') : item.action;
         }
 
-        // プレビュー用に動画のタイムスタンプを抽出 (タグフィルタがある場合はフィルタリング)
+        // 動画プレイヤー用のユニークID生成
+        const uniqueSuffix = Math.random().toString(36).substring(7);
+        const playerId = item.type === '動画' ? `yt-card-${item.id}-${uniqueSuffix}` : null;
+
+        // プレビュー用に動画のタイムスタンプを抽出
         let tsPreview = '';
         if (item.type === '動画' && item.content) {
             const matches = [...item.content.matchAll(TS_LINE_REGEX)];
@@ -469,13 +542,15 @@
                     const [full, min, sec, tagsRaw, desc] = m;
                     const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()) : [];
                     
-                    // タグ指定がある場合、そのタグが含まれている行のみ、またはタグがない場合は最初の3件を表示
                     if (highlightTag && !tags.includes(highlightTag)) return;
                     if (!highlightTag && count >= 3) return;
 
+                    const timeSec = parseInt(min)*60 + parseInt(sec);
                     const timeStr = `${min}:${sec}`;
+                    
+                    // 【修正】onclickでこのカードのプレイヤーをシークさせる (stopPropagationで親の遷移イベントを止める)
                     tsPreview += `
-                        <div class="preview-ts-item">
+                        <div class="preview-ts-item" onclick="event.stopPropagation(); seekVideo('${playerId}', ${timeSec})">
                             <span class="ts-badge">▶ ${timeStr}</span>
                             <span>${desc.substring(0, 40)}${desc.length>40?'...':''}</span>
                         </div>`;
@@ -485,17 +560,18 @@
             }
         }
 
-        // 動画プレイヤーの埋め込み (サムネイル代わり)
+        // 動画プレイヤーの埋め込み (Iframe API使用)
         let videoEmbed = '';
         if (item.type === '動画' && item.youtubeId) {
             videoEmbed = `
             <div class="video-wrapper" style="margin-bottom:16px;">
-                <iframe src="https://www.youtube.com/embed/${item.youtubeId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                <div id="${playerId}"></div>
             </div>`;
         }
 
+        // 【修正】タイトル色: link-colorの指定を削除
         const titleHtml = item.type === '動画' 
-            ? `<div class="card-title" onclick="router('videos', '${item.id}')" style="cursor:pointer; color:var(--link-color);">${item.title}</div>`
+            ? `<div class="card-title" onclick="router('videos', '${item.id}')" style="cursor:pointer;">${item.title}</div>`
             : `<div class="card-title">${item.title}</div>`;
 
         card.innerHTML = `
@@ -511,6 +587,25 @@
             ${tsPreview}
         `;
         container.appendChild(card);
+
+        // YouTubeプレイヤーの初期化 (DOMに追加された後)
+        if (item.type === '動画' && item.youtubeId && playerId) {
+            // APIロード待ちを含めた初期化処理
+            const initPlayer = () => {
+                if (window.YT && window.YT.Player) {
+                    ytPlayers[playerId] = new YT.Player(playerId, {
+                        videoId: item.youtubeId,
+                        playerVars: { 'rel': 0 },
+                        height: '100%',
+                        width: '100%'
+                    });
+                } else {
+                    setTimeout(initPlayer, 200);
+                }
+            };
+            // 少し遅らせて実行（DOM描画確実化）
+            setTimeout(initPlayer, 50);
+        }
     }
 
     // 1. DASHBOARD
@@ -532,7 +627,7 @@
             ...getVideos().slice(0, 3).map(i => ({...i, type: '動画', action: () => router('videos', i.id)})),
             ...getTetofu().slice(0, 2).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')}))
         ].sort((a,b) => new Date(b.date) - new Date(a.date));
-        
+
         recent.forEach(item => renderCard(list, item));
     }
 
@@ -571,14 +666,14 @@
         });
     }
 
-    // 4-2. VIDEO DETAIL (新形式: 動画 + Markdown記事)
+    // 4-2. VIDEO DETAIL
     function renderVideoDetail(id) {
         const v = getVideos().find(video => video.id === id);
         if(!v) return router('videos');
 
-        ytPlayers = {}; 
+        // 古いプレイヤー情報をクリア
         const playerId = `yt-player-detail`;
-
+        
         // Markdown内の [mm:ss]{tag} をインタラクティブなHTMLに変換
         const rawContent = v.content || "";
         const processedContent = rawContent.replace(TS_REGEX, (match, min, sec, tagsRaw) => {
@@ -616,7 +711,6 @@
                 </div>
             </div>
         `;
-
         mainView.innerHTML = html;
 
         const initYT = () => {
@@ -638,6 +732,8 @@
         if (player && typeof player.seekTo === 'function') {
             player.seekTo(seconds, true);
             player.playVideo();
+        } else {
+            console.warn("Player not found or not ready:", playerId);
         }
     }
     
@@ -645,7 +741,6 @@
         const player = ytPlayers[playerId];
         if (player && typeof player.setPlaybackRate === 'function') {
             player.setPlaybackRate(rate);
-            // ボタンのアクティブ表示切り替え
             const container = document.querySelector('.video-controls');
             if(container) {
                 container.querySelectorAll('.rate-btn').forEach(btn => {
@@ -671,11 +766,10 @@
         
         const allTags = {};
         const collect = (tags) => (tags||[]).forEach(t => allTags[t] = (allTags[t] || 0) + 1);
-        
+
         getArticles().forEach(i => collect(i.tags));
         getTetofu().forEach(i => collect(i.tags));
         
-        // 動画: Mainタグとコンテンツ内のタグを収集
         getVideos().forEach(v => {
             collect(v.tags);
             const matches = [...v.content.matchAll(TS_REGEX)];
@@ -695,7 +789,6 @@
     }
 
     function renderTagDetail(tagName) {
-        // デコードして表示
         const decodedTag = decodeURIComponent(tagName);
         mainView.innerHTML = `
             <button class="btn-outline" onclick="router('tags')" style="margin-bottom: 24px;">← タグ一覧に戻る</button>
@@ -742,7 +835,6 @@
         if(!location.hash) router('dashboard');
         else window.dispatchEvent(new HashChangeEvent("hashchange"));
     }, 100);
-
 </script>
 </body>
 </html>
