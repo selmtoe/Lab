@@ -2,7 +2,7 @@ window.LAB_VIDEOS = [
     {
         id: 'top-player-analysis-01',
         date: '2026-02-15',
-        title: 'トッププレイヤー分析',
+        title: 'トッププレイヤー分析①',
         youtubeId: 'eJ4pyT8qZvw',
         tags: ['トッププレイヤー', '動画解説'],
         description: '',
@@ -26,12 +26,12 @@ window.LAB_VIDEOS = [
         `
     },
     {
-        id: 'ren-practice-01',
-        date: '2025-11-25',
-        title: '中開けRENの基本パターン',
-        youtubeId: 'M7lc1UVf-VE',
-        tags: ['REN', 'テンプレ'],
-        description: '汎用性の高い中開けRENの積み込みパターンをいくつか紹介します。',
+        id: 'top-player-analysis-02',
+        date: '2026-02-16',
+        title: 'トッププレイヤー分析②',
+        youtubeId: '3ZfVx4ZIEO8',
+        tags: ['トッププレイヤー', '動画解説'],
+        description: '',
         content: `
 REN（連鎖）は現代テトリスにおいて必須技術です。特に中開けは地形を選ばず組みやすいのが特徴です。
 
