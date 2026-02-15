@@ -644,9 +644,11 @@
                         <button class="rate-btn" onclick="changeRate(0.5)">x0.5</button>
                         <button class="rate-btn active" onclick="changeRate(1.0)">x1.0</button>
                         <button class="rate-btn" onclick="changeRate(1.5)">x1.5</button>
+                        <button id="ppt-scan-trigger" class="rate-btn" style="display:none; border-color: var(--accent-color); color: var(--accent-color); font-weight:bold;" onclick="triggerExtensionScan()">画像認識</button>
                     </div>
-                    
+      
                     <h1 class="article-title" style="font-size:24px;">${v.title}</h1>
+
                     <div class="card-meta">${v.date}</div>
                     <div>${createTagHtml(v.tags)}</div>
                 </div>
@@ -790,11 +792,39 @@
         }
         router(page || 'dashboard', id, query);
     });
-
     setTimeout(() => {
         if(!location.hash) router('dashboard');
         else window.dispatchEvent(new HashChangeEvent("hashchange"));
     }, 100);
+
+    // --- 拡張機能連携機能 ---
+    
+    // 1. 拡張機能からの「存在確認」を受け取る
+    window.addEventListener('message', (event) => {
+        // セキュリティのため、信頼できるソースからのメッセージか確認することを推奨しますが、
+        // 拡張機能側が window.postMessage を使う場合は origin が自サイトになります。
+        if (event.data && event.data.type === 'PPT_EXTENSION_DETECTED') {
+            document.body.classList.add('has-ppt-extension');
+            const btn = document.getElementById('ppt-scan-trigger');
+            if(btn) btn.style.display = 'inline-block';
+        }
+    });
+
+    // 2. ボタンクリックで拡張機能へ命令を送る
+    function triggerExtensionScan() {
+        window.postMessage({ type: 'PPT_TRIGGER_SCAN' }, '*');
+    }
+
+    // 3. 画面遷移（renderVideoDetail）のたびにボタンの表示状態を再チェック
+    
+    const observer = new MutationObserver(() => {
+        const btn = document.getElementById('ppt-scan-trigger');
+        if (btn && document.body.classList.contains('has-ppt-extension')) {
+            btn.style.display = 'inline-block';
+        }
+    });
+    observer.observe(document.getElementById('main-view'), { childList: true, subtree: true });
+
 </script>
 </body>
 </html>
