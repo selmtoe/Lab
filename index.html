@@ -7,7 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://www.youtube.com/iframe_api"></script>
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<script async src="https://www.youtube.com/iframe_api"></script>
+<link rel="stylesheet" href="lab-enhancements.css">
+<link rel="stylesheet" href="lab-writer.css">
 
 <style>
     :root {
@@ -328,9 +331,10 @@
                 <a class="nav-item" onclick="router('videos')">Videos</a>
                 <a class="nav-item" onclick="router('tetofu')">Tetofu</a>
                 <a class="nav-item" onclick="router('tags')">Tags</a>
+                <a id="lab-analysis-nav" class="nav-item" onclick="router('analysis')" hidden>Analysis</a>
             </nav>
             <div class="search-box">
-                <span class="search-icon">🔍</span>
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
                 <input type="text" class="search-input" placeholder="Search..." onkeydown="handleSearch(event)">
             </div>
         </div>
@@ -343,6 +347,7 @@
 <script src="data/articles.js"></script>
 <script src="data/videos.js"></script>
 <script src="data/tetofu.js"></script>
+<script src="data/tetris-event-codec.js"></script>
 
 <script>
     // --- データ取得ヘルパー ---
@@ -352,12 +357,35 @@
 
     // YouTube API連携用
     let detailPlayer = null;    // 詳細ページのプレイヤー
+    let detailYTTimer = null;
+    let detailGeneration = 0;
     let listPlayers = {};       // リスト表示用プレイヤー { domId: YT.Player }
+    let pendingDetailSeek = null;
+    let detailPlayerReady = false;
     
     function onYouTubeIframeAPIReady() { /* 動的生成のため空 */ }
 
     // タグHTML生成
-    const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.preventDefault(); event.stopPropagation(); router('tags', '${t}')">${t}</span>`).join('');
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.preventDefault(); event.stopPropagation(); router('tags', ${escapeHtml(JSON.stringify(t))})">${escapeHtml(t)}</span>`).join('');
+    function renderMarkdown(text) {
+        const document = new DOMParser().parseFromString(marked.parse(text || ''), 'text/html');
+        document.querySelectorAll('script,style,object,embed,form,input,button,link,meta,base,svg,math').forEach(el => el.remove());
+        for (const el of document.body.querySelectorAll('*')) {
+            for (const attribute of [...el.attributes]) {
+                if (/^on/i.test(attribute.name) || ['srcdoc','formaction'].includes(attribute.name)) el.removeAttribute(attribute.name);
+                if (['href','src'].includes(attribute.name)) {
+                    try { const url = new URL(attribute.value, location.href); if (!['http:','https:'].includes(url.protocol)) el.removeAttribute(attribute.name); }
+                    catch { el.removeAttribute(attribute.name); }
+                }
+            }
+            if (el.tagName === 'IFRAME') {
+                try { if (!['selmtoe.github.io','www.youtube.com','www.youtube-nocookie.com'].includes(new URL(el.src).hostname)) { el.remove(); continue; } } catch { el.remove(); continue; }
+                el.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+            }
+        }
+        return document.body.innerHTML;
+    }
 
     // タイムスタンプ抽出用正規表現: [01:30]{tag1,tag2} 説明文...
     const TS_REGEX = /\[(\d{1,2}):(\d{2})\](?:\{([^}]+)\})?/g;
@@ -369,7 +397,7 @@
     function router(page, id = null, query = null) {
         // 現在のハッシュと比較し、違う場合のみURL更新
         let targetHash = page;
-        if (id) targetHash += `/${id}`;
+        if (id) targetHash += `/${encodeURIComponent(id)}`;
         if (query) targetHash += `?q=${encodeURIComponent(query)}`;
 
         // デコードした状態で比較しないと、エンコードされた文字を含む場合に無限ループや不一致が起きる
@@ -391,6 +419,7 @@
         window.scrollTo({top: 0, behavior: 'smooth'});
         
         // メインビューのクリアとプレイヤーのリセット
+        window.resetDetailVideo?.();
         listPlayers = {}; // リスト用プレイヤー参照をクリア
         mainView.innerHTML = '';
 
@@ -401,7 +430,10 @@
             case 'tetofu': renderTetofu(); break;
             case 'tags': id ? renderTagDetail(id) : renderTagList(); break;
             case 'search': renderSearchResults(query); break;
+            case 'analysis': window.LabExtension?.renderAnalysis(); break;
+            case 'research': window.LabExtension?.renderResearch(id); break;
         }
+        window.LabExtension?.afterRoute(page, id);
     }
 
     // --- 検索機能 ---
@@ -422,11 +454,11 @@
 
         mainView.innerHTML = `
             <button class="btn-outline" onclick="router('dashboard')" style="margin-bottom: 24px;">← ホームに戻る</button>
-            <h2 class="section-title">検索結果: "${decodeURIComponent(query)}"</h2>
+            <h2 class="section-title">検索結果: "${escapeHtml(query)}"</h2>
             <div class="list-container" id="search-results"></div>
         `;
                 const list = document.getElementById('search-results');
-        const queryWords = decodeURIComponent(query).toLowerCase().split(/\s+/).filter(w => w);
+        const queryWords = query.toLowerCase().split(/\s+/).filter(w => w);
         const results = [];
 
         const isMatch = (item) => {
@@ -505,7 +537,7 @@
                     tsPreview += `
                         <div class="preview-ts-item" onclick="seekListVideo('${playerDomId}', ${timeSec}, event)">
                             <span class="ts-badge">▶ ${timeStr}</span>
-                            <span>${desc.substring(0, 40)}${desc.length>40?'...':''}</span>
+                            <span>${escapeHtml(desc.substring(0, 40))}${desc.length>40?'...':''}</span>
                         </div>`;
                     count++;
                 });
@@ -524,22 +556,23 @@
 
         // 修正: タイトル色を修正（黒に戻す）
         const titleHtml = item.type === '動画' 
-            ? `<div class="card-title" onclick="router('videos', '${item.id}')" style="cursor:pointer;">${item.title}</div>`
-            : `<div class="card-title">${item.title}</div>`;
+            ? `<div class="card-title" onclick="router('videos', '${item.id}')" style="cursor:pointer;">${escapeHtml(item.title)}</div>`
+            : `<div class="card-title">${escapeHtml(item.title)}</div>`;
 
         card.innerHTML = `
             <div class="card-meta">
                 <span style="font-weight:bold; color:var(--accent-color);">${item.type || 'Note'}</span> 
-                <span>${item.date}</span>
+                <span>${escapeHtml(item.date)}</span>
                 ${item.externalUrl ? '<span style="color:var(--text-muted)">外部リンク ↗</span>' : ''}
             </div>
             ${videoEmbed}
             ${titleHtml}
-            ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
+            ${item.description ? `<div class="card-desc">${escapeHtml(item.description)}</div>` : ''}
             <div>${createTagHtml(item.tags)}</div>
             ${tsPreview}
         `;
         container.appendChild(card);
+        window.LabExtension?.decorateCard(card, item);
 
         // カード追加後にYouTubeプレイヤーを初期化
         if (item.type === '動画' && item.youtubeId && window.YT && window.YT.Player) {
@@ -593,10 +626,10 @@
             <div class="article-header">
                 <button class="btn-outline" onclick="router('articles')" style="margin-bottom: 24px;">← 記事一覧に戻る</button>
                 <div class="card-meta">${article.date}</div>
-                <h1 class="article-title">${article.title}</h1>
+                <h1 class="article-title">${escapeHtml(article.title)}</h1>
                 <div>${createTagHtml(article.tags)}</div>
             </div>
-            <div class="article-body">${marked.parse(article.content)}</div>
+            <div class="article-body">${renderMarkdown(article.content)}</div>
         `;
         mainView.innerHTML = html;
     }
@@ -613,9 +646,13 @@
     // 4-2. VIDEO DETAIL (詳細ページ)
     function renderVideoDetail(id) {
         const v = getVideos().find(video => video.id === id);
-        if(!v) return router('videos');
+        if(!v) {
+            if(!window.LabExtension?.ready){mainView.innerHTML='<p role="status">動画を読み込んでいます…</p>';return;}
+            return router('videos');
+        }
 
         detailPlayer = null; 
+        pendingDetailSeek = null;
         const playerId = `yt-player-detail`;
 
         // Markdown内の [mm:ss]{tag} を詳細プレイヤー操作用に変換
@@ -625,10 +662,10 @@
             const timeStr = `${min}:${sec}`;
             let tagHtml = '';
             if(tagsRaw) {
-                tagHtml = tagsRaw.split(',').map(t => `<span class="tag" style="margin-left:4px; font-size:11px; padding:1px 6px;">${t.trim()}</span>`).join('');
+                tagHtml = tagsRaw.split(',').map(t => `<span class="tag" style="margin-left:4px; font-size:11px; padding:1px 6px;">${escapeHtml(t.trim())}</span>`).join('');
             }
             // 詳細ページでは detailPlayer (seekVideo) を使う
-            return `<a class="ts-link" onclick="seekDetailVideo(${time})">▶ ${timeStr}</a>${tagHtml}`;
+            return `<a class="ts-link" data-video-seek="${time}">▶ ${timeStr}</a>${tagHtml}`;
         });
 
         const html = `
@@ -647,41 +684,69 @@
                         <button id="ppt-scan-trigger" class="rate-btn" style="display:none; border-color: var(--accent-color); color: var(--accent-color); font-weight:bold;" onclick="triggerExtensionScan()">画像認識</button>
                     </div>
       
-                    <h1 class="article-title" style="font-size:24px;">${v.title}</h1>
+                    <h1 class="article-title" style="font-size:24px;">${escapeHtml(v.title)}</h1>
 
                     <div class="card-meta">${v.date}</div>
                     <div>${createTagHtml(v.tags)}</div>
                 </div>
 
                 <div class="article-body">
-                    ${marked.parse(processedContent)}
+                    ${renderMarkdown(processedContent)}
                 </div>
             </div>
         `;
         mainView.innerHTML = html;
 
-        const initYT = () => {
-            if (window.YT && YT.Player) {
-                detailPlayer = new YT.Player(playerId, {
-                    videoId: v.youtubeId,
-                    playerVars: { 'rel': 0 }
-                });
-            } else {
-                setTimeout(initYT, 100);
-            }
-        };
-        initYT();
+        if (v.youtubeId && !window.LabExtension) window.startDetailYouTube(v.youtubeId);
     }
 
     // --- プレイヤー操作関数 ---
 
     // 1. 詳細ページ用
+    window.resetDetailVideo = function() {
+        detailGeneration++; clearTimeout(detailYTTimer);
+        try { detailPlayer?.destroy?.(); } catch {}
+        detailPlayer = null; pendingDetailSeek = null; detailPlayerReady = false;
+    };
+    window.startDetailYouTube = function(videoId, callbacks={}) {
+        window.resetDetailVideo();
+        const generation = detailGeneration, placeholder = document.getElementById('yt-player-detail'), started = Date.now();
+        if (!placeholder) return;
+        // Render the standard embed immediately; API loading only adds timestamp synchronization.
+        const mount=document.createElement('iframe'),url=new URL('https://www.youtube.com/embed/'+videoId);
+        url.search=new URLSearchParams({enablejsapi:'1',origin:location.origin,rel:'0',playsinline:'1',start:String(Math.max(0,Math.floor(callbacks.initialTime||0)))});
+        mount.id='yt-player-detail';mount.title=callbacks.title||'YouTube動画';mount.src=url.href;
+        mount.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        mount.allowFullscreen=true;mount.referrerPolicy='strict-origin-when-cross-origin';
+        placeholder.replaceWith(mount);
+        const valid = () => generation === detailGeneration && document.getElementById('yt-player-detail')===mount;
+        const failed = code => { if(valid()) {clearTimeout(detailYTTimer); callbacks.onError?.(code);} };
+        const init = () => {
+            if (!mount?.isConnected || generation !== detailGeneration) return;
+            if (!window.YT?.Player) {
+                if(Date.now()-started > 12000) {failed('timeout');return;}
+                detailYTTimer=setTimeout(init,100);return;
+            }
+            detailYTTimer=setTimeout(()=>failed('timeout'),12000);
+            detailPlayer = new YT.Player(mount, {
+                events:{onReady:()=>{if(!valid())return;detailPlayerReady=true;clearTimeout(detailYTTimer);callbacks.onReady?.();
+                    if(pendingDetailSeek!==null){const seconds=pendingDetailSeek;pendingDetailSeek=null;window.seekDetailVideo(seconds);}},
+                    onError:event=>failed(event.data)}
+            });
+        };init();
+    };
     window.seekDetailVideo = function(seconds) {
-        if (detailPlayer && typeof detailPlayer.seekTo === 'function') {
+        window.LabExtension?.onSeek(seconds);
+        if (detailPlayerReady && detailPlayer && typeof detailPlayer.seekTo === 'function') {
             detailPlayer.seekTo(seconds, true);
             detailPlayer.playVideo();
+        } else {
+            pendingDetailSeek = seconds;
+            const frame=document.getElementById('yt-player-detail');
+            if(frame?.tagName==='IFRAME'){const url=new URL(frame.src);url.searchParams.set('start',Math.max(0,Math.floor(seconds)));url.searchParams.set('autoplay','1');frame.src=url.href;}
         }
     }
+    window.labVideoTime = () => pendingDetailSeek??(detailPlayerReady?detailPlayer?.getCurrentTime?.()??NaN:NaN);
     
     window.changeRate = function(rate) {
         if (detailPlayer && typeof detailPlayer.setPlaybackRate === 'function') {
@@ -693,6 +758,7 @@
                 });
             }
         }
+        document.querySelectorAll('.video-controls .rate-btn').forEach(btn=>btn.classList.toggle('active',btn.textContent==='x'+Number(rate).toFixed(rate%1?2:1)||Number(btn.textContent.slice(1))===rate));
     }
 
     // 2. リストカード用（修正: その場の動画を操作）
@@ -734,7 +800,7 @@
         // 動画: Mainタグとコンテンツ内のタグを収集
         getVideos().forEach(v => {
             collect(v.tags);
-            const matches = [...v.content.matchAll(TS_REGEX)];
+            const matches = [...(v.content || '').matchAll(TS_REGEX)];
             matches.forEach(m => {
                 if(m[3]) m[3].split(',').forEach(t => allTags[t.trim()] = (allTags[t.trim()] || 0) + 1);
             });
@@ -744,17 +810,17 @@
             const el = document.createElement('span');
             el.className = 'tag';
             el.style.fontSize = '14px'; el.style.padding = '6px 14px';
-            el.innerHTML = `${tag} (${count})`;
+            el.textContent = `${tag} (${count})`;
             el.onclick = () => router('tags', tag);
             container.appendChild(el);
         });
     }
 
     function renderTagDetail(tagName) {
-        const decodedTag = decodeURIComponent(tagName);
+        const decodedTag = tagName;
         mainView.innerHTML = `
             <button class="btn-outline" onclick="router('tags')" style="margin-bottom: 24px;">← タグ一覧に戻る</button>
-            <h2 class="section-title">タグ: ${decodedTag}</h2>
+            <h2 class="section-title">タグ: ${escapeHtml(decodedTag)}</h2>
             <div class="list-container" id="tag-results"></div>
         `;
         const list = document.getElementById('tag-results');
@@ -764,7 +830,7 @@
             ...getTetofu().filter(t => (t.tags || []).includes(decodedTag)).map(i => ({...i, type: 'テト譜', action: () => window.open(i.url, '_blank')})),
             ...getVideos().filter(v => {
                 const hasMainTag = (v.tags || []).includes(decodedTag);
-                const hasContentTag = v.content.includes(`{${decodedTag}}`) || v.content.includes(`,${decodedTag}}`) || v.content.includes(`{${decodedTag},`);
+                const hasContentTag = (v.content || '').includes(`{${decodedTag}}`) || (v.content || '').includes(`,${decodedTag}}`) || (v.content || '').includes(`{${decodedTag},`);
                 return hasMainTag || hasContentTag;
             }).map(i => ({...i, type: '動画', action: () => router('videos', i.id)}))
         ].sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -781,9 +847,9 @@
 
     // 初期化
     window.addEventListener('hashchange', () => {
-        const hash = decodeURIComponent(location.hash.slice(1));
+        const hash = location.hash.slice(1);
         const [path, queryPart] = hash.split('?');
-        const [page, id] = path.split('/');
+        const [page, id] = path.split('/').map(value => decodeURIComponent(value));
         
         let query = null;
         if(queryPart) {
@@ -796,6 +862,10 @@
         if(!location.hash) router('dashboard');
         else window.dispatchEvent(new HashChangeEvent("hashchange"));
     }, 100);
+    mainView.addEventListener('click', event => {
+        const timestamp = event.target.closest('[data-video-seek]');
+        if (timestamp) { event.preventDefault(); window.seekDetailVideo(Number(timestamp.dataset.videoSeek)); }
+    });
 
     // --- 拡張機能連携機能 ---
     
@@ -826,5 +896,6 @@
     observer.observe(document.getElementById('main-view'), { childList: true, subtree: true });
 
 </script>
+<script type="module" src="lab-enhancements.js"></script>
 </body>
 </html>
