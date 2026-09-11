@@ -76,8 +76,8 @@ async function openImports(){
         const rows=node('div',undefined,'lab-scroll');for(const m of value.matches)rows.append(node('p',`${m.existing?'登録済み・変更があれば更新':'新しく追加'} · ${m.title}`));
         for(const m of value.excluded)rows.append(node('p',`試合${m.index}：${m.reason}`,'lab-help-text'));preview.append(rows);
         preview.append(node('p','新規・盤面が変わった試合は非公開で保存します。タグ、研究メモ、YouTubeのリンクと時刻補正は残します。','lab-help-text'));
-        const commit=button('完成した試合を取り込む',async()=>{commit.disabled=true;status.textContent='取り込んでいます…';try{const r=await post('/api/import-completed',{id:value.id});d.close();await refresh();notice(`追加 ${r.imported}試合 · 更新 ${r.updated}試合 · 変更なし ${r.skipped}試合。${r.changed?'内容が変わった試合は再採点・公開確認をしてください。':''}`);}finally{commit.disabled=false;}},'btn-outline lab-primary');commit.disabled=!value.matches.length;preview.append(commit);
-        if(value.matches.length){const download=node('a','この完成結果を1つのファイルに保存','btn-outline');download.href=value.downloadUrl;download.download=value.title.replace(/[\\/:*?"<>|]/g,'_')+'.tetris-lab.json';preview.append(download);}
+        const commit=button('完成した試合を取り込む',async()=>{commit.disabled=true;status.textContent='取り込んでいます…';try{const r=await post('/api/import-completed',{id:value.id});d.close();await refresh();notice(`追加 ${r.imported}試合 · 更新 ${r.updated}試合 · 変更なし ${r.skipped}試合。${r.changed?'内容が変わった試合は再採点・公開確認をしてください。':''}`);}finally{commit.disabled=false;}},'btn-outline lab-primary');commit.disabled=!value.matches.length;const actions=node('div',undefined,'lab-inline-actions');preview.append(actions);actions.append(commit);
+        if(value.matches.length){const download=node('a','この完成結果を1つのファイルに保存','btn-outline');download.href=value.downloadUrl;download.download=value.title.replace(/[\\/:*?"<>|]/g,'_')+'.tetris-lab.json';actions.append(download);}
         preview.scrollIntoView({block:'nearest'});
     };
     const pick=button('PCの解析ファイルを選ぶ',async()=>{pick.disabled=true;status.textContent='ファイル選択を開いています…';try{showPreview(await post('/api/choose-completed',{}));status.textContent='';}finally{pick.disabled=false;}});
@@ -142,11 +142,11 @@ function scoreWidget(matches,label,compact=false){
         element.classList.toggle('is-running',!!active||!!pending);status.classList.toggle('lab-form-error',!!error||related?.status==='failed');
         progress.hidden=!active&&!pending;progress.max=Math.max(1,total);if(total)progress.value=done;else progress.removeAttribute('value');
         detail.textContent=matches.length===1?(items[0]?.players||[]).map(p=>`${p.player.toUpperCase()} ${p.completed} / ${p.total}手`).join(' · '):total?`${items.length<matches.length?`直近の採点対象 ${items.length} / ${matches.length}試合 · `:''}${done} / ${total}手 · 完了 ${items.filter(m=>['complete','scored'].includes(m.status)).length} / ${items.length}試合`:'';
-        result.hidden=related?.status!=='complete'||ownStatus==='stale';
+        result.hidden=related?.status!=='complete'||items.some(m=>m.status==='stale');
         if(error)status.textContent=error;
         else if(pending)status.textContent='採点を開始しています…';
         else if(active)status.textContent=ownStatus==='queued'?'順番待ち':ownStatus==='scored'?'採点終了 · 候補を保存しています':total?`採点中 · ${Math.floor(done/total*100)}%`:(related.progress||'採点を準備しています…');
-        else if(ownStatus==='stale')status.textContent='完成結果が更新されたため、もう一度採点してください。';
+        else if(items.some(m=>m.status==='stale'))status.textContent='完成結果が更新されたため、もう一度採点してください。';
         else if(related?.status==='complete')status.textContent=`採点完了 · 候補 ${items.reduce((n,m)=>n+(m.candidates||0),0)}件${related.cached===related.tasks?'（保存済みの結果）':''}`;
         else if(related)status.textContent=related.status==='cancelled'?'採点を中止しました':related.status==='interrupted'?'採点が中断されました。もう一度実行できます。':related.progress;
         else status.textContent=running?'ほかの試合を採点中です。完了後に実行できます。':start.disabled?'解析失敗のため採点できません。':'未採点';
@@ -204,7 +204,7 @@ function mountVideo(video){
             if(query&&!JSON.stringify([match.title,match.players,match.tags,match.bookmarks]).toLowerCase().includes(query))continue;
             const row=node('div',undefined,'lab-match-row'+(selected?.id===match.id?' active':''));rows.set(match.id,row);
             row.append(button('▶ '+timeText(match.startSeconds+timeOffset(video)),()=>{choose(match);window.seekDetailVideo(match.startSeconds+timeOffset(video));},'ts-link'),node('strong',`試合 ${match.analysis?.index||index+1}`));
-            row.append(node('p',(match.players||[]).filter(Boolean).join(' / ')));if(match.status==='failed')row.append(node('span','解析失敗','lab-failed'));else row.append(node('small',({reviewed:'確認済み',edited:'手直し済み・再確認待ち'})[match.reviewState]||'動画との確認前'));tags(row,match.tags);if(state.token&&match.status==='complete')row.append(scoreWidget([match],'この試合を採点',true));list.append(row);
+            row.append(node('p',(match.players||[]).filter(Boolean).join(' / ')));if(match.status==='failed')row.append(node('span','解析失敗','lab-failed'));else row.append(node('small','解析成功'));tags(row,match.tags);if(state.token&&match.status==='complete')row.append(scoreWidget([match],'この試合を採点',true));list.append(row);
         }};
     const showPosition=index=>{if(!selected||!pages.length)return;index=Math.max(0,Math.min(index,pages.length-1));if(index===lastPosition)return;lastPosition=index;slider.value=index;
         const page=pages[index],seconds=selected.startSeconds+(page.time||0);positionText.textContent=`局面 ${index+1} / ${pages.length} · 動画 ${timeText(seconds+timeOffset(video))}`;
