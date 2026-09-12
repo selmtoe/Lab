@@ -223,11 +223,10 @@ function mountPlayback(video,left){
     const target=node('div');target.id='yt-player-detail';wrapper.replaceChildren(target);
     window.startDetailYouTube(video.youtubeId,{title:video.title,initialTime:(video.labMatches[0]?.startSeconds||0)+timeOffset(video),
         onReady:()=>{status.textContent='';status.classList.remove('lab-form-error');},
-        onError:code=>{status.classList.toggle('lab-form-error',code!=='timeout');status.textContent=code==='timeout'?'動画の再生ボタンを押してください。時刻連動の接続を待っています。':[101,150].includes(code)?'この動画はYouTube側で埋め込み再生が許可されていません。':code===100?'動画が削除されたか、非公開になっています。':`YouTubeを読み込めませんでした（${code}）。ページを再読み込みしてください。`;}});
+        onError:code=>{status.classList.toggle('lab-form-error',code!=='timeout');status.textContent=code==='timeout'?'YouTubeとの接続を確認できません。動画が表示されない場合はページを再読み込みするか、「元のYouTubeを開く」を使ってください。':[101,150].includes(code)?'この動画はYouTube側で埋め込み再生が許可されていません。':code===100?'動画が削除されたか、非公開になっています。':`YouTubeを読み込めませんでした（${code}）。ページを再読み込みしてください。`;}});
 }
 function mountVideo(video){
     const left=document.querySelector('.video-sticky-area'),right=document.querySelector('.video-detail-container > .article-body');if(!left||!right)return;
-    mountPlayback(video,left);
     if(state.token){const controls=node('div',undefined,'lab-inline-actions');controls.append(button('動画・解析結果を編集',()=>openVideoSettings(video)),button('現在位置にメモを追加',()=>openBookmark(video)));
         const original=byId(video.labRecordId);if(original)controls.append(button('本文・タグを編集',()=>openEdit(original)));left.append(controls);}
     if(video.youtubeId){const links=node('div',undefined,'lab-source-link'),a=node('a','元のYouTubeを開く');a.href='https://www.youtube.com/watch?v='+video.youtubeId;a.target='_blank';a.rel='noopener';links.append(a,button('リンクをコピー',async()=>{await navigator.clipboard.writeText(a.href);notice('元動画のリンクをコピーしました。');}));left.append(links);}
@@ -235,7 +234,7 @@ function mountVideo(video){
     for(const match of video.labMatches)for(const mark of match.bookmarks||[])marks.push({...mark,displaySeconds:mark.seconds+timeOffset(video)});
     if(marks.length){const section=node('section',undefined,'lab-analysis-panel');section.append(node('h2','追加したメモ'));
         for(const mark of marks.sort((a,b)=>a.displaySeconds-b.displaySeconds)){const row=node('div',undefined,'lab-bookmark');row.append(button('▶ '+timeText(mark.displaySeconds),()=>window.seekDetailVideo(mark.displaySeconds),'ts-link'),node('p',mark.note));tags(row,mark.tags);section.append(row);}right.append(section);}
-    if(!video.labMatches.length)return;
+    if(!video.labMatches.length){mountPlayback(video,left);return;}
     const section=node('section',undefined,'lab-analysis-panel');section.append(node('h2',`動画解析 · ${video.labMatches.length}試合`));
     if(state.token){section.append(scoreWidget(video.labMatches,'この動画をまとめてAI採点'),button('AI採点の設定',scoringSettings));}
     const filter=node('input',undefined,'lab-tag-filter');filter.placeholder='選手・タグ・メモから試合を絞り込む';filter.setAttribute('aria-label','解析した試合を絞り込む');section.append(filter);
@@ -285,6 +284,8 @@ function mountVideo(video){
     state.onSeek=seconds=>{lastSeekAt=Date.now();sync(seconds);};slider.oninput=()=>seekPosition(selected,Number(slider.value));
     player.onchange=()=>{const index=lastPosition;lastPosition=-1;showPosition(index);};filter.oninput=renderList;renderList();choose(video.labMatches[0]);
     state.timer=setInterval(()=>{if(!work.isConnected){clearInterval(state.timer);return;}if(follow.checked&&Date.now()-lastSeekAt>800)sync(window.labVideoTime?.());},250);
+    // Moving an iframe's ancestor resets its browsing context. Mount only after layout is final.
+    mountPlayback(video,left);
 }
 async function saveSnapshot(data,reference){
     const source=research.sourceRef(reference);
