@@ -56,7 +56,7 @@ function boardView(board,label){
 function select(id){
     const r=state.items.find(x=>x.id===id);if(!r)return;state.selected=id;state.toolFrame=null;state.pending=null;
     location.hash=`record/${encodeURIComponent(id)}`;renderList();const d=$('detail');d.replaceChildren(el('h1',r.title),el('div',`${types[r.kind]} · ${r.date||''}`,'meta'));
-    if(state.trash){d.append(button('資料を戻す',async()=>{await post('/api/trash',{id:r.id,revision:r.revision,restore:true});await reload();message('資料を戻しました。');}));return;}
+    if(state.token&&state.trash){d.append(button('資料を戻す',async()=>{await post('/api/trash',{id:r.id,revision:r.revision,restore:true});await reload();message('資料を戻しました。');}));return;}
     if(r.status==='failed')d.append(el('p','解析失敗：この試合の結果は確定していません。','error'));
     if(r.description)d.append(el('p',r.description));
     const actions=el('div',undefined,'actions');link(actions,'外部リンク',r.url||r.externalUrl);
@@ -157,4 +157,5 @@ $('backup').onclick=async()=>{try{const result=await post('/api/backup',{});mess
 let previousJobs='';async function pollJobs(){if(!state.token)return;try{const {jobs}=await api('/api/jobs');const signature=JSON.stringify(jobs);if(signature===previousJobs)return;const hadRunning=$('jobs').dataset.running==='1';previousJobs=signature;$('jobs').replaceChildren();let running=false;for(const job of jobs.filter(j=>j.status==='running'||Date.parse(j.created)>Date.now()-86400000)){const row=el('div',undefined,'job');row.append(el('strong',job.title),el('span',job.progress));if(job.status==='running'){running=true;row.append(button('中止',async()=>{await post('/api/cancel',{id:job.id});await pollJobs();},true));}$('jobs').append(row);}$('jobs').dataset.running=running?'1':'0';if(hadRunning&&!running)await reload();}catch{}}
 try{const response=['127.0.0.1','localhost'].includes(location.hostname)?await fetch('/api/session'):null;if(response?.ok&&response.headers.get('Content-Type')?.includes('application/json')){const data=await response.json();state.token=data.token;state.toolOrigin=data.toolOrigin;}}catch{}
 $('access').textContent=state.token?'このPCで編集できます':'公開資料';$('owner').hidden=!state.token;
+if(state.token&&location.hash==='#trash'){state.trash=true;$('trash').textContent='資料一覧へ戻る';}
 try{await reload();await pollJobs();if(state.token)setInterval(pollJobs,3000);}catch(e){message('資料を読み込めませんでした。'+e.message,true);}

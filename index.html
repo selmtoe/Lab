@@ -323,19 +323,19 @@
 
 <header>
     <div class="header-inner">
-        <div class="logo" onclick="router('dashboard')">LAB</div>
+        <a class="logo" href="#dashboard" onclick="router('dashboard')">LAB</a>
         <div class="nav-wrapper">
             <nav class="nav-links">
-                <a class="nav-item active" onclick="router('dashboard')">Home</a>
-                <a class="nav-item" onclick="router('articles')">Articles</a>
-                <a class="nav-item" onclick="router('videos')">Videos</a>
-                <a class="nav-item" onclick="router('tetofu')">Tetofu</a>
-                <a class="nav-item" onclick="router('tags')">Tags</a>
-                <a id="lab-analysis-nav" class="nav-item" onclick="router('analysis')" hidden>Analysis</a>
+                <a class="nav-item active" href="#dashboard" onclick="router('dashboard')">Home</a>
+                <a class="nav-item" href="#articles" onclick="router('articles')">Articles</a>
+                <a class="nav-item" href="#videos" onclick="router('videos')">Videos</a>
+                <a class="nav-item" href="#tetofu" onclick="router('tetofu')">Tetofu</a>
+                <a class="nav-item" href="#tags" onclick="router('tags')">Tags</a>
+                <a id="lab-analysis-nav" class="nav-item" href="#analysis" onclick="router('analysis')" hidden>Analysis</a>
             </nav>
             <div class="search-box">
                 <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
-                <input type="text" class="search-input" placeholder="Search..." onkeydown="handleSearch(event)">
+                <input type="text" class="search-input" placeholder="Search..." aria-label="サイト内を検索" onkeydown="handleSearch(event)">
             </div>
         </div>
     </div>
@@ -367,7 +367,7 @@
 
     // タグHTML生成
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const createTagHtml = (tags) => (tags || []).map(t => `<span class="tag" onclick="event.preventDefault(); event.stopPropagation(); router('tags', ${escapeHtml(JSON.stringify(t))})">${escapeHtml(t)}</span>`).join('');
+    const createTagHtml = (tags) => (tags || []).map(t => `<a class="tag" href="#tags/${escapeHtml(encodeURIComponent(t))}" onclick="event.stopPropagation()">${escapeHtml(t)}</a>`).join('');
     function renderMarkdown(text) {
         const document = new DOMParser().parseFromString(marked.parse(text || ''), 'text/html');
         document.querySelectorAll('script,style,object,embed,form,input,button,link,meta,base,svg,math').forEach(el => el.remove());
@@ -535,10 +535,10 @@
                     
                     // 修正: カード内のプレイヤーを操作するonclickイベントを設定
                     tsPreview += `
-                        <div class="preview-ts-item" onclick="seekListVideo('${playerDomId}', ${timeSec}, event)">
+                        <button type="button" class="preview-ts-item" onclick="seekListVideo('${playerDomId}', ${timeSec}, event)">
                             <span class="ts-badge">▶ ${timeStr}</span>
                             <span>${escapeHtml(desc.substring(0, 40))}${desc.length>40?'...':''}</span>
-                        </div>`;
+                        </button>`;
                     count++;
                 });
                 tsPreview += `</div>`;
@@ -555,9 +555,7 @@
         }
 
         // 修正: タイトル色を修正（黒に戻す）
-        const titleHtml = item.type === '動画' 
-            ? `<div class="card-title" onclick="router('videos', '${item.id}')" style="cursor:pointer;">${escapeHtml(item.title)}</div>`
-            : `<div class="card-title">${escapeHtml(item.title)}</div>`;
+        const titleHtml = `<div class="card-title"></div>`;
 
         card.innerHTML = `
             <div class="card-meta">
@@ -573,6 +571,10 @@
         `;
         container.appendChild(card);
         window.LabExtension?.decorateCard(card, item);
+        const title=card.querySelector('.card-title'),target=document.createElement(item.type==='テト譜'?'button':'a');
+        target.className='card-title-action';target.textContent=item.title;
+        if(target.tagName==='A'){target.href=item.externalUrl||'#'+(item.type==='動画'?'videos':'articles')+'/'+encodeURIComponent(item.id);if(item.externalUrl){target.target='_blank';target.rel='noopener';}target.onclick=e=>e.stopPropagation();}
+        else{target.type='button';target.onclick=e=>{e.stopPropagation();card.onclick?.(e);};}title.append(target);
 
         // カード追加後にYouTubeプレイヤーを初期化
         if (item.type === '動画' && item.youtubeId && window.YT && window.YT.Player) {
@@ -620,7 +622,10 @@
     // 3. ARTICLE DETAIL
     function renderArticleDetail(id) {
         const article = getArticles().find(a => a.id === id);
-        if(!article) return router('articles');
+        if(!article) {
+            if(!window.LabExtension?.ready){mainView.innerHTML='<p role="status">記事を読み込んでいます…</p>';return;}
+            return router('articles');
+        }
 
         let html = `
             <div class="article-header">
@@ -807,11 +812,11 @@
         });
 
         Object.entries(allTags).sort((a,b) => b[1] - a[1]).forEach(([tag, count]) => {
-            const el = document.createElement('span');
+            const el = document.createElement('a');
             el.className = 'tag';
             el.style.fontSize = '14px'; el.style.padding = '6px 14px';
             el.textContent = `${tag} (${count})`;
-            el.onclick = () => router('tags', tag);
+            el.href = '#tags/'+encodeURIComponent(tag);
             container.appendChild(el);
         });
     }
@@ -846,7 +851,9 @@
     }
 
     // 初期化
+    let initialRoutePending = true;
     window.addEventListener('hashchange', () => {
+        initialRoutePending = false;
         const hash = location.hash.slice(1);
         const [path, queryPart] = hash.split('?');
         const [page, id] = path.split('/').map(value => decodeURIComponent(value));
@@ -859,6 +866,8 @@
         router(page || 'dashboard', id, query);
     });
     setTimeout(() => {
+        if (!initialRoutePending) return;
+        initialRoutePending = false;
         if(!location.hash) router('dashboard');
         else window.dispatchEvent(new HashChangeEvent("hashchange"));
     }, 100);
