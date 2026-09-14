@@ -746,7 +746,11 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
             detailPlayer = new YT.Player(mount, {
                 events:{onReady:()=>{if(!valid())return;detailPlayerReady=true;clearTimeout(detailYTTimer);callbacks.onReady?.();
                     if(pendingDetailSeek!==null){const seconds=pendingDetailSeek,pause=pendingDetailPause;pendingDetailSeek=null;window.seekDetailVideo(seconds,{pause});}},
-                    onStateChange:event=>{if(valid())callbacks.onStateChange?.(event.data);},
+                    onStateChange:event=>{if(!valid())return;
+                        // Keep the play thumbnail until the reader starts the
+                        // video; seeking an unstarted embed can leave it black.
+                        if(event.data===1&&pendingDetailSeek!==null){const seconds=pendingDetailSeek;pendingDetailSeek=null;pendingDetailPause=false;window.seekDetailVideo(seconds);}
+                        callbacks.onStateChange?.(event.data);},
                     onError:event=>failed(event.data)}
             });
         };init();
@@ -756,6 +760,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
         seconds=Math.max(0,seconds);
         window.LabExtension?.onSeek(seconds);
         if (detailPlayerReady && detailPlayer && typeof detailPlayer.seekTo === 'function') {
+            if(options.pause&&[-1,5].includes(detailPlayer.getPlayerState?.())){pendingDetailSeek=seconds;pendingDetailPause=true;return;}
             detailPlayer.seekTo(seconds, true);
             if(options.pause)detailPlayer.pauseVideo?.();else detailPlayer.playVideo();
         } else {
