@@ -3,3 +3,23 @@
 .boards{display:flex;gap:24px;flex-wrap:wrap;margin:12px 0}.board{display:grid;grid-template-columns:repeat(10,1fr);width:180px;background:#14232c;border:4px solid #304955}.cell{aspect-ratio:1;border:1px solid #ffffff13;background:#162a35}.c-I{background:#38ccd8}.c-O{background:#ecc941}.c-T{background:#b965ce}.c-S{background:#79c958}.c-Z{background:#e77878}.c-J{background:#507bd6}.c-L{background:#e6a450}.c-G{background:#929f9e}.tag.failed{background:#fae8e9;color:#9d2836}.bookmark-form{display:grid;gap:10px;background:#f5f8f8;padding:16px;border-radius:8px}.job{display:flex;gap:18px;align-items:center;padding:14px;margin:10px 0;background:#e8f4ef;border-radius:8px}.job strong{max-width:45%;overflow-wrap:anywhere}.job span{flex:1}.tool-area{border-top:1px solid var(--border);margin-top:20px}.observations{border-top:1px solid var(--border);padding-top:16px}.notes{max-height:700px;overflow:auto}.notes img{max-width:100%;height:auto}.notes p{white-space:pre-wrap}#publication-list,#batches,#video-list{max-height:50vh;overflow:auto}.bookmark small{margin-left:auto;white-space:nowrap}.bookmark>div{flex:1}summary{cursor:pointer;font-weight:600}input[type=range]{padding:0;accent-color:var(--accent)}
 
 #bulk-list{max-height:30vh;overflow:auto;font-size:14px}
+
+/* The small edge control shares the article site's saved appearance. */
+:root{--bg-color:#f4f7f9;--surface-color:#fff;--text-main:#172a35;--text-muted:#526975;--border-color:#d3dfe3;--accent-color:#087e73}
+:root[data-lab-theme="light"]{color-scheme:light}
+:root[data-lab-theme="dark"]{color-scheme:dark;--bg-color:#252527;--surface-color:#303032;--text-main:#dedee1;--text-muted:#aaaab1;--border-color:#48484b;--accent-color:#a0c7b7;--accent:var(--accent-color);--border:var(--border-color);background:var(--bg-color);color:var(--text-main)}
+.lab-appearance-toggle{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:90;display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid var(--border-color);border-radius:50%;background:var(--surface-color);color:var(--text-muted);cursor:pointer;box-shadow:0 2px 8px #0000000a}
+.lab-appearance-toggle svg{width:18px;height:18px;pointer-events:none}
+.lab-appearance-toggle:hover{color:var(--text-main);border-color:var(--text-muted)}
+.lab-appearance-toggle:focus-visible{outline:2px solid var(--accent-color);outline-offset:3px}
+@media(pointer:coarse){.lab-appearance-toggle{width:40px;height:40px}}
+:root[data-lab-theme="dark"] :is(header,.entry,#detail,dialog,iframe.tool,.secondary){background:var(--surface-color);color:var(--text-main)}
+:root[data-lab-theme="dark"] :is(input,select,textarea){background:var(--bg-color);color:var(--text-main);border-color:var(--border)}
+:root[data-lab-theme="dark"] :is(header span,#counts,.meta,.empty){color:var(--text-muted)}
+:root[data-lab-theme="dark"] a{color:#a4c4d8}
+:root[data-lab-theme="dark"] button:not(.secondary,.entry,.lab-appearance-toggle){color:#25312d}
+:root[data-lab-theme="dark"] :is(.tag,.job){background:#3b4541;color:#cedcd7}
+:root[data-lab-theme="dark"] .bookmark-form{background:#2b2b2d}
+:root[data-lab-theme="dark"] .bookmark{border-color:var(--border)}
+:root[data-lab-theme="dark"] .tag.failed{background:#4a3934;color:#e7a69f}
+:root[data-lab-theme="dark"] .error{color:#e7a69f}

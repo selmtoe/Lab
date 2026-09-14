@@ -1,4 +1,5 @@
-import {youtubeId,timeText,encodeState,stateFromUrl,pageState,unpackLabelBoard} from './library-tools.js';
+import {youtubeId,timeText,encodeState,stateFromUrl,pageState,unpackLabelBoard,mountAppearanceControl} from './library-tools.js';
+mountAppearanceControl();
 const $=id=>document.getElementById(id);
 const state={items:[],token:null,selected:null,trash:false,toolOrigin:'https://selmtoe.github.io',toolFrame:null,pending:null,batches:[],digest:null};
 const types={article:'記事',video:'動画',tetofu:'テト譜',match:'解析した試合'};
@@ -157,5 +158,7 @@ $('backup').onclick=async()=>{try{const result=await post('/api/backup',{});mess
 let previousJobs='';async function pollJobs(){if(!state.token)return;try{const {jobs}=await api('/api/jobs');const signature=JSON.stringify(jobs);if(signature===previousJobs)return;const hadRunning=$('jobs').dataset.running==='1';previousJobs=signature;$('jobs').replaceChildren();let running=false;for(const job of jobs.filter(j=>j.status==='running'||Date.parse(j.created)>Date.now()-86400000)){const row=el('div',undefined,'job');row.append(el('strong',job.title),el('span',job.progress));if(job.status==='running'){running=true;row.append(button('中止',async()=>{await post('/api/cancel',{id:job.id});await pollJobs();},true));}$('jobs').append(row);}$('jobs').dataset.running=running?'1':'0';if(hadRunning&&!running)await reload();}catch{}}
 try{const response=['127.0.0.1','localhost'].includes(location.hostname)?await fetch('/api/session'):null;if(response?.ok&&response.headers.get('Content-Type')?.includes('application/json')){const data=await response.json();state.token=data.token;state.toolOrigin=data.toolOrigin;}}catch{}
 $('access').textContent=state.token?'このPCで編集できます':'公開資料';$('owner').hidden=!state.token;
+// Keep old personal-management bookmarks, with one editing destination.
+if(state.token){try{await api('/api/drafts');location.replace('index.html'+(location.hash.startsWith('#record/')?'#manage-record/'+location.hash.slice(8):location.hash==='#trash'?'#manage/trash':'#manage/articles'));}catch{}}
 if(state.token&&location.hash==='#trash'){state.trash=true;$('trash').textContent='資料一覧へ戻る';}
 try{await reload();await pollJobs();if(state.token)setInterval(pollJobs,3000);}catch(e){message('資料を読み込めませんでした。'+e.message,true);}

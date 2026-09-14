@@ -1,9 +1,61 @@
 import {timeText, pageState, stateFromUrl} from './library-tools.js';
 
+// The actual viewer owns rendering and its controls; Lab only links its page to video time.
+export function createVideoViewer({origin,onPage,onPractice,onPause}) {
+    const frame=document.createElement('iframe');frame.className='lab-replay-viewer';
+    frame.title='P1・P2の連動ビューワー';frame.allow='clipboard-write';frame.inert=true;
+    const status=document.createElement('p');status.className='lab-viewer-status';status.setAttribute('role','status');status.textContent='ビューワーを読み込み中…';
+    const url=new URL('F/',origin.replace(/\/?$/,'/'));url.searchParams.set('labViewer','1');
+    const expectedOrigin=url.origin,abort=new AbortController();let ready=false,latest=null,sentKey=null,lastIndex=-1;
+    const theme=()=>document.documentElement.dataset.labTheme==='dark'?'dark':'light';
+    const send=(action,data)=>frame.contentWindow?.postMessage({type:'labViewerRequest',action,...data},expectedOrigin);
+    const flush=()=>{
+        if(!ready||!latest)return;
+        if(sentKey!==latest.key){sentKey=latest.key;lastIndex=latest.index;send('load',{...latest,theme:theme()});}
+        else if(lastIndex!==latest.index){lastIndex=latest.index;send('seek',{key:latest.key,index:latest.index});}
+    };
+    window.addEventListener('message',event=>{
+        if(event.origin!==expectedOrigin||event.source!==frame.contentWindow||!frame.isConnected)return;
+        const message=event.data;if(!message||typeof message!=='object')return;
+        if(message.type==='labViewerReady'){ready=true;sentKey=null;flush();return;}
+        if(message.key!==latest?.key)return;
+        if(message.type==='labViewerLoaded'){frame.dataset.ready='true';frame.inert=false;status.hidden=true;return;}
+        if(message.type==='labViewerPage'&&Number.isInteger(message.index)&&message.index>=0&&message.index<latest.pages.length){lastIndex=message.index;onPage(message.index);}
+        else if(message.type==='labViewerPractice')onPractice();
+        else if(message.type==='labViewerPause')onPause();
+        else if(message.type==='labViewerError'){frame.dataset.ready='error';status.hidden=false;status.textContent='ビューワーを読み込めませんでした。画面を再読み込みしてください。';}
+    },{signal:abort.signal});
+    const appearance=new MutationObserver(()=>{if(ready)send('theme',{theme:theme()});});
+    appearance.observe(document.documentElement,{attributes:true,attributeFilter:['data-lab-theme']});
+    frame.addEventListener('load',()=>{if(!ready)send('ready',{});},{signal:abort.signal});
+    frame.src=url.href;
+    return {frame,status,show(match,pages,index){latest={key:match.id+':'+match.revision,title:match.title,pages,index};flush();},destroy(){abort.abort();appearance.disconnect();frame.remove();status.remove();}};
+}
+
 export function createResearch(ui) {
-    const {state,node,button,dialog,field,footer,post,refresh,notice,boardElement,openTool,openEdit,recordId,byId}=ui;
+    const {state,node,button,dialog,field,footer,api,post,refresh,notice,boardElement,openTool,openEdit,recordId,byId}=ui;
     const stages=[['candidate','研究候補'],['selected','厳選した難地形'],['problem','問題'],['archived','保留']];
     const clone=value=>JSON.parse(JSON.stringify(value));
+    const folderPickers=new Set();
+    async function loadFolders(){const result=await api('/api/research-folders');state.researchFolders=result.folders;return result.folders;}
+    function drawFolders(select,all){const value=select.value;select.replaceChildren();for(const [id,name] of [...(all?[['*','すべてのフォルダ']]:[]),['','未整理'],...(state.researchFolders||[]).map(f=>[f.id,f.name])]){const option=node('option',name);option.value=id;select.append(option);}select.value=[...select.options].some(o=>o.value===value)?value:all?'*':'';}
+    async function editFolder(folder=null,selected){
+        const d=dialog(folder?'フォルダ名を変更':'フォルダを作成'),form=node('form');d.append(form);
+        const name=field(form,'フォルダ名','name',folder?.name||'');name.required=true;name.maxLength=100;
+        footer(d,form,folder?'変更する':'作成する',async()=>{
+            const saved=await post('/api/research-folders',{...(folder?{id:folder.id,revision:folder.revision}:{}),name:name.value});
+            await loadFolders();for(const item of folderPickers){if(!item.select.isConnected){folderPickers.delete(item);continue;}drawFolders(item.select,item.all);item.select.dispatchEvent(new Event('change'));}
+            if(selected){selected.value=saved.id;selected.dispatchEvent(new Event('change'));}d.close();
+        });d.showModal();name.focus();
+    }
+    function folderPicker(parent,{value='',all=false,label='フォルダ',manage=false,onChange=()=>{}}={}){
+        const wrap=node('div',undefined,'lab-folder-picker'),select=field(wrap,label,'folderId',value,'text',[]);select.setAttribute('aria-label',label);parent.append(wrap);
+        const item={select,all};folderPickers.add(item);drawFolders(select,all);select.value=value;
+        let rename,remove;const update=()=>{const folder=(state.researchFolders||[]).find(f=>f.id===select.value);if(rename)rename.hidden=remove.hidden=!folder;onChange(select.value);};select.onchange=update;
+        if(manage){const actions=node('div',undefined,'lab-inline-actions');rename=button('名前を変更',()=>editFolder((state.researchFolders||[]).find(f=>f.id===select.value),select));remove=button('空のフォルダを削除',async()=>{const folder=(state.researchFolders||[]).find(f=>f.id===select.value);if(!folder)return;await post('/api/research-folders',{action:'delete',id:folder.id,revision:folder.revision});await loadFolders();for(const item of folderPickers)if(item.select.isConnected){drawFolders(item.select,item.all);item.select.dispatchEvent(new Event('change'));}});actions.append(button('フォルダを作成',()=>editFolder(null,select)),rename,remove);wrap.append(actions);}
+        loadFolders().then(()=>{if(!select.isConnected)return;drawFolders(select,all);select.value=[...select.options].some(o=>o.value===value)?value:all?'*':'';update();}).catch(e=>notice(e.message,true));queueMicrotask(update);return select;
+    }
+    const folderName=record=>(state.researchFolders||[]).find(f=>f.id===record.research?.folderId)?.name||'未整理';
     function firstPage(data){
         if(!data)return null;
         if(data.v===2)return {p1:{board:data.p1?.b,next:data.p1?.n,hold:data.p1?.h},...(data.p2?{p2:{board:data.p2.b,next:data.p2.n,hold:data.p2.h}}:{})};
@@ -12,18 +64,19 @@ export function createResearch(ui) {
         return page&&(c.gameMode||data.m)==='1P'?{...page,p2:undefined}:page;
     }
     function sourceRef(reference){return clone(reference.sourceRef||{recordId:reference.id||'',title:reference.title||'',seconds:reference.startSeconds||0,
-        phase:reference.phase||0,player:reference.player||'both',youtubeId:reference.youtubeId||'',youtubeOffsetSeconds:reference.youtubeOffsetSeconds||0});}
+        phase:reference.phase||0,positionIndex:reference.phase||0,analysisRevision:reference.revision||0,player:reference.player||'both',youtubeId:reference.youtubeId||'',youtubeOffsetSeconds:reference.youtubeOffsetSeconds||0});}
     function sourceAtPage(reference,pageIndex,time){
         const ref=sourceRef(reference);
         // Only a full original replay has page numbers/times that identify source-video positions.
-        if(reference._fullMatch){if(Number.isInteger(pageIndex)&&pageIndex>=0)ref.phase=pageIndex;
+        if(reference._fullMatch){if(Number.isInteger(pageIndex)&&pageIndex>=0){ref.phase=pageIndex;ref.positionIndex=pageIndex;}
             if(Number.isFinite(time))ref.seconds=(reference._matchStart??reference.startSeconds??0)+time;}
         return ref;
     }
     function resolveSourceLink(ref){
         const exact=state.videos.find(v=>v.labMatches.some(m=>m.id===ref.recordId));
         const video=exact||state.videos.find(v=>ref.youtubeId&&v.youtubeId===ref.youtubeId);
-        const current=exact?{...ref,youtubeId:exact.youtubeId||'',youtubeOffsetSeconds:exact.youtubeOffsetSeconds||0}:clone(ref);
+        const pinned=Number.isInteger(ref.analysisRevision),current=exact&&!pinned?{...ref,youtubeId:exact.youtubeId||'',youtubeOffsetSeconds:exact.youtubeOffsetSeconds||0}:clone(ref);
+        if(pinned&&exact&&byId(ref.recordId)?.revision!==ref.analysisRevision){current.youtubeSeconds=ref.seconds+(ref.youtubeId?(ref.youtubeOffsetSeconds||0):0);delete current.phase;}
         // A different analysis of the same upload can use a different local time origin.
         if(video&&!exact)current.youtubeSeconds=ref.seconds+(ref.youtubeId?(ref.youtubeOffsetSeconds||0):0);
         return {video,current};
@@ -37,23 +90,69 @@ export function createResearch(ui) {
 
     }
     function boardPreview(parent,data,player='p1'){const page=firstPage(data);if(!page)return;const boards=node('div',undefined,'lab-boards');boards.append(boardElement(page.p1?.board,!page.p2&&player==='p2'?'P2':'P1',page.p1));if(page.p2)boards.append(boardElement(page.p2.board,'P2',page.p2));parent.append(boards);}
+    let targetId='';try{targetId=sessionStorage.getItem('lab:research-target')||'';}catch{}
+    const targetPickers=new Set(),targetLabels=new Set();
+    function updateTargetLabels(){const record=(state.editorialArticles||[]).find(r=>r.id===targetId)||byId(targetId);for(const label of targetLabels){if(!label.isConnected){targetLabels.delete(label);continue;}label.textContent='追加先：'+(record?.title||'新しい記事');}}
+    function setTarget(id){targetId=String(id||'');try{sessionStorage.setItem('lab:research-target',targetId);}catch{}for(const picker of targetPickers){if(!picker.isConnected){targetPickers.delete(picker);continue;}if([...picker.options].some(o=>o.value===targetId))picker.value=targetId;}updateTargetLabels();}
+    function targetLabel(parent){const label=node('small',undefined,'lab-current-article');parent.append(label);targetLabels.add(label);updateTargetLabels();return label;}
+    async function articlePicker(parent){
+        const select=field(parent,'追加先の記事','articleId','','text',[['','新しい記事']]);select.classList.add('lab-research-target');targetPickers.add(select);
+        select.onchange=()=>setTarget(select.value);let records=state.editorialArticles;
+        if(!records){try{const data=await api('/api/editorial');records=data.articles||data.records||[];state.editorialArticles=records;}catch{records=state.records.filter(r=>['article','video'].includes(r.kind)||r.kind==='tetofu'&&r.editorialFormat);}}
+        for(const record of records){if(!record.id)continue;const option=node('option',record.title||'無題の記事');option.value=record.id;select.append(option);}
+        if(records.some(r=>r.id===targetId))select.value=targetId;updateTargetLabels();
+        return select;
+    }
+    function openRelated(record={}){
+        if(record.id)setTarget(record.id);
+        const references=[record.sourceRef,...(record.citations||[]).map(c=>c.sourceRef)].filter(Boolean);
+        const video=state.videos.find(v=>v.labRecordId===record.id)||state.videos.find(v=>record.youtubeId&&v.youtubeId===record.youtubeId)||references.map(ref=>resolveSourceLink(ref).video).find(Boolean);
+        if(video){const reference=references.find(ref=>video.labMatches.some(m=>m.id===ref.recordId));if(reference)state.pendingSource=resolveSourceLink(reference).current;window.router('videos',video.id);}else window.router('manage','research');
+    }
+    async function addToArticle(kind,data,reference,initial={}){
+        window.pauseDetailVideo?.();const ref=sourceRef(reference),seconds=Number.isFinite(initial.seconds)?initial.seconds:ref.seconds+(ref.youtubeId?(ref.youtubeOffsetSeconds||0):0);
+        const d=dialog(kind==='position'?'この盤面を記事に追加':'この時刻を記事に追加'),form=node('form');d.append(form);
+        const target=await articlePicker(form);
+        if(kind==='position')boardPreview(form,data,ref.player);
+        form.append(node('p',`${ref.title||'元動画'} · ${timeText(seconds)}${ref.player!=='both'?' · '+ref.player.toUpperCase():''}`,'lab-source'));
+        const heading=field(form,'見出し','title',initial.title||`${kind==='position'?'局面':'見どころ'} · ${timeText(seconds)}`);heading.required=true;heading.maxLength=250;
+        field(form,'解説（あとから書けます）','comment','','textarea');
+        footer(d,form,'記事に追加して開く',async()=>{
+            const id=target.value;let record=id&&(state.editorialArticles||[]).find(r=>r.id===id)||byId(id);
+            if(id&&!record)throw Error('追加先の記事が見つかりません。記事を選び直してください。');
+            if(id){const latest=await api('/api/editorial');record=(latest.articles||latest.records||[]).find(r=>r.id===id);if(!record)throw Error('追加先の記事はごみ箱へ移動しています。別の記事を選んでください。');}
+            const values=Object.fromEntries(new FormData(form));setTarget(id);
+            const payload={kind,title:values.title.trim(),comment:values.comment,origin:ref,seconds,
+                ...(data?{snapshot:clone(data)}:{}),videoUrl:ref.youtubeId?`https://www.youtube.com/watch?v=${ref.youtubeId}&t=${Math.max(0,Math.floor(seconds))}s`:''};
+            d.close();await openEdit({...record,kind:record?.kind||'article',_researchInsertion:payload});
+        });d.showModal();return d;
+    }
+    function articleControls(parent,getContext){
+        const panel=node('div',undefined,'lab-article-transfer');parent.append(panel);
+        articlePicker(panel).catch(error=>notice(error.message,true));
+        const actions=node('div',undefined,'lab-inline-actions');panel.append(actions);
+        actions.append(button('記事に時刻を追加',()=>{const context=getContext();return addToArticle('timestamp',null,context.reference,{seconds:context.seconds});}));
+        return {panel,addPosition:()=>{const context=getContext();return addToArticle('position',context.data,context.reference,{seconds:context.seconds});}};
+    }
     function capture(data,reference,initial={}){
-        const d=dialog('局面を研究用に保存'),form=node('form'),ref=sourceRef(reference);d.append(form);
+        const d=dialog('局面をフォルダに保存'),form=node('form'),ref=sourceRef(reference);d.append(form);
         form.append(node('p',initial.fromTool?'表示中の盤面を保存します。元動画へのリンクは、検討を始めた元の局面を保ちます。練習・編集した手順と元動画の進行は別です。':'元動画の時刻と盤面を一緒に保存します。後から記事への引用・問題化ができます。'));
         boardPreview(form,data,ref.player);
         field(form,'タイトル','title',initial.title||`${reference.title||'局面'} · ${timeText(ref.seconds)}`).required=true;
-        field(form,'保存先','stage',initial.stage||'candidate','text',stages);
+        folderPicker(form,{value:initial.folderId||'',manage:true});
+        field(form,'分類','stage',initial.stage||'candidate','text',stages);
         field(form,'タグ（カンマ区切り）','tags',(reference.tags||[]).join(', '));
         field(form,'研究メモ（公開には含めません）','notes','','textarea');
-        footer(d,form,'研究候補として保存',async()=>{const v=Object.fromEntries(new FormData(form));const saved=await post('/api/records',{
+        footer(d,form,'局面を保存',async()=>{const v=Object.fromEntries(new FormData(form));const saved=await post('/api/records',{
             kind:'tetofu',title:v.title,tags:v.tags.split(',').map(t=>t.trim()).filter(Boolean),snapshot:data,sourceRef:ref,
-            parentId:ref.recordId,visibility:'private',research:{stage:v.stage,notes:v.notes,...(initial.ai?{ai:initial.ai}:{})}});
-            d.close();await refresh(true);notice('研究用に保存しました。「研究ノート」で厳選・記事への引用・問題化を続けられます。');return saved;
+            parentId:ref.recordId,visibility:'private',research:{stage:v.stage,folderId:v.folderId,notes:v.notes,...(initial.ai?{ai:initial.ai}:{})}});
+            d.close();await refresh(true);notice('研究の「局面・資料」に保存しました。記事へ追加する時は、保存した局面から選べます。');return saved;
         });d.showModal();
     }
     function editResearch(record){
         const d=dialog('研究メモ・問題を編集'),form=node('form');d.append(form);
         field(form,'タイトル','title',record.title).required=true;
+        folderPicker(form,{value:record.research?.folderId||'',manage:true});
         field(form,'整理する場所','stage',record.research?.stage||'candidate','text',stages);
         field(form,'タグ（カンマ区切り）','tags',(record.tags||[]).join(', '));
         field(form,'問題文（例：このNEXTで地形を崩さずに掘り進めてください）','prompt',record.research?.prompt||'','textarea');
@@ -63,7 +162,7 @@ export function createResearch(ui) {
         form.append(node('p','「公開対象」にして保存した後、「公開管理」から送信するとサイトに反映されます。'));
         footer(d,form,'保存する',async()=>{const v=Object.fromEntries(new FormData(form));if(v.stage==='problem'&&!v.prompt.trim())throw Error('問題として保存するには問題文を入力してください。');
             await post('/api/records',{id:record.id,revision:record.revision,title:v.title,tags:v.tags.split(',').map(t=>t.trim()).filter(Boolean),visibility:v.visibility,
-                research:{...record.research,stage:v.stage,prompt:v.prompt,answer:v.answer,notes:v.notes}});d.close();await refresh();notice('研究資料を更新しました。');});d.showModal();
+                research:{...record.research,folderId:v.folderId,stage:v.stage,prompt:v.prompt,answer:v.answer,notes:v.notes}});d.close();await refresh();notice('研究資料を更新しました。');});d.showModal();
     }
     function renderCitations(record){
         if(!record.citations?.length)return;
@@ -98,7 +197,7 @@ export function createResearch(ui) {
         }
         const actions=node('div',undefined,'lab-inline-actions');
         if(record.snapshot)actions.append(button('この局面から練習',()=>{d.close();openTool('sim',practiceState(record.snapshot),record);}),button('テト譜を編集',()=>{d.close();openTool('editor',record.snapshot,record);}));
-        if(state.token)actions.append(button('研究メモ・問題を編集',()=>{d.close();editResearch(record);}),ui.trashButton(record,()=>d.close()));
+        if(state.token)actions.append(button('記事に追加',()=>{d.close();return addToArticle('position',practiceState(record.snapshot),record);}),button('研究メモ・問題を編集',()=>{d.close();editResearch(record);}),ui.trashButton(record,()=>d.close()));
         actions.append(button('閉じる',()=>d.close()));d.append(actions);d.showModal();
     }
     function practiceState(snapshot){const page=firstPage(snapshot);return snapshot.v===2?snapshot:pageState(page||{});}
@@ -163,7 +262,7 @@ export function createResearch(ui) {
             ['1. PCの配信解析で解析・修正する','「管理メニュー」→「PCの配信解析を開く」、または「ぷよテト配信を全自動解析.bat」を起動します。今までどおり動画を解析し、盤面・NEXT・HOLD・選手名を修正します。最後に「修正を再判定」を実行して保存してください。Labでは動画解析を実行しません。'],
             ['2. 完成した結果を取り込む','「完成結果を取り込む」でPCの batch-results.json を選びます。1試合だけなら simulator フォルダーの *_tetris_recovered.json も使えます。解析履歴から選ぶこともできます。完成した試合の一覧を確認して取り込みます。未完成の試合は取り込まれません。完成結果だけを1つの .tetris-lab.json に保存して、後から取り込むこともできます。'],
             ['3. YouTubeと局面をつなぐ','Videos / Analysis から動画を開きます。「動画・解析結果を編集」でYouTubeのURLを変更できます。時刻がずれる場合は同じ画面で補正します。試合時刻や局面のバーを押すと、埋め込み動画も同じ時刻へ移動します。'],
-            ['4. 局面を集める・AIに探させる','気になった時刻でP1 / P2を選び、「研究ノートに保存」します。AI採点はあらかじめ設定を保存し、採点ボタンを押すと「AIの指摘を見る」から該当局面へ飛べます。AIの評価だけで悪手とは判断しません。保存したい局面だけ、自分で「研究ノートに保存」を押します。'],
+            ['4. 局面を調べて記事へ入れる','P1・P2はビューワーに並んで表示されます。気になる局面で「記事に盤面を挿入」を押すと両方を記事へ追加できます。あとで使う場合は「あとで使う局面として保存」を押します。AIの指摘からも該当局面へ移動できます。'],
             ['5. 難地形を厳選する','「研究ノート」に候補が集まります。タグや研究メモで比較し、「整理・問題化」で「厳選した難地形」に移します。保留にもできます。'],
             ['6. 記事を書く・問題にする','「記事を書く」から本文に直接入力します。見出しや太字は上の道具、局面は右の資料棚から挿入できます。引用の並べ替え・削除も本文の中で操作します。書きかけはこのPCに自動保存され、記事の保存は右上のボタンです。問題は研究ノートの「整理・問題化」で作ります。'],
             ['7. Labに公開する','動画設定にYouTubeのURLを貼り、公開したい資料を「公開対象」にします。「管理メニュー」→「公開管理」で内容を見て「Labに公開する」を押します。PCの動画や非公開の研究メモは送信しません。'],
@@ -172,5 +271,5 @@ export function createResearch(ui) {
         ];
         for(const [title,text]of groups){d.append(node('h3',title),node('p',text));}d.append(button('閉じる',()=>d.close()));d.showModal();
     }
-    return {capture,sourceRef,sourceAtPage,resolveSourceLink,sourceLink,practiceState,firstPage,boardPreview,editResearch,renderCitations,renderWorkspace,openDetail,scoreReport,guide};
+    return {capture,sourceRef,sourceAtPage,resolveSourceLink,sourceLink,practiceState,firstPage,boardPreview,editResearch,renderCitations,renderWorkspace,openDetail,scoreReport,guide,setTarget,openRelated,articlePicker,articleControls,addToArticle,targetLabel,folderPicker,folderName};
 }

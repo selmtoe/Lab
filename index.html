@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LAB</title>
+<script>
+// Apply the saved appearance before the first paint, including on article links.
+try { document.documentElement.dataset.labTheme = localStorage.getItem('lab-appearance-mode') === 'dark' ? 'dark' : 'light'; }
+catch { document.documentElement.dataset.labTheme = 'light'; }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -361,6 +366,7 @@
     let detailGeneration = 0;
     let listPlayers = {};       // リスト表示用プレイヤー { domId: YT.Player }
     let pendingDetailSeek = null;
+    let pendingDetailPause = false;
     let detailPlayerReady = false;
     
     function onYouTubeIframeAPIReady() { /* 動的生成のため空 */ }
@@ -423,6 +429,10 @@
         listPlayers = {}; // リスト用プレイヤー参照をクリア
         mainView.innerHTML = '';
 
+        if(window.LabExtension?.renderEditorRoute(page,id)) {
+            window.LabExtension.afterRoute(page,id);
+            return;
+        }
         switch(page) {
             case 'dashboard': renderDashboard(); break;
             case 'articles': id ? renderArticleDetail(id) : renderArticleList(); break;
@@ -711,7 +721,7 @@
     window.resetDetailVideo = function() {
         detailGeneration++; clearTimeout(detailYTTimer);
         try { detailPlayer?.destroy?.(); } catch {}
-        detailPlayer = null; pendingDetailSeek = null; detailPlayerReady = false;
+        detailPlayer = null; pendingDetailSeek = null; pendingDetailPause = false; detailPlayerReady = false;
     };
     window.startDetailYouTube = function(videoId, callbacks={}) {
         window.resetDetailVideo();
@@ -735,23 +745,29 @@
             detailYTTimer=setTimeout(()=>failed('timeout'),12000);
             detailPlayer = new YT.Player(mount, {
                 events:{onReady:()=>{if(!valid())return;detailPlayerReady=true;clearTimeout(detailYTTimer);callbacks.onReady?.();
-                    if(pendingDetailSeek!==null){const seconds=pendingDetailSeek;pendingDetailSeek=null;window.seekDetailVideo(seconds);}},
+                    if(pendingDetailSeek!==null){const seconds=pendingDetailSeek,pause=pendingDetailPause;pendingDetailSeek=null;window.seekDetailVideo(seconds,{pause});}},
+                    onStateChange:event=>{if(valid())callbacks.onStateChange?.(event.data);},
                     onError:event=>failed(event.data)}
             });
         };init();
     };
-    window.seekDetailVideo = function(seconds) {
+    window.seekDetailVideo = function(seconds, options={}) {
+        if(!Number.isFinite(seconds))return;
+        seconds=Math.max(0,seconds);
         window.LabExtension?.onSeek(seconds);
         if (detailPlayerReady && detailPlayer && typeof detailPlayer.seekTo === 'function') {
             detailPlayer.seekTo(seconds, true);
-            detailPlayer.playVideo();
+            if(options.pause)detailPlayer.pauseVideo?.();else detailPlayer.playVideo();
         } else {
             pendingDetailSeek = seconds;
+            pendingDetailPause = !!options.pause;
             const frame=document.getElementById('yt-player-detail');
-            if(frame?.tagName==='IFRAME'){const url=new URL(frame.src);url.searchParams.set('start',Math.max(0,Math.floor(seconds)));url.searchParams.set('autoplay','1');frame.src=url.href;}
+            if(frame?.tagName==='IFRAME'){const url=new URL(frame.src);url.searchParams.set('start',Math.max(0,Math.floor(seconds)));url.searchParams.set('autoplay',options.pause?'0':'1');frame.src=url.href;}
         }
     }
     window.labVideoTime = () => pendingDetailSeek??(detailPlayerReady?detailPlayer?.getCurrentTime?.()??NaN:NaN);
+    window.labVideoPlaying = () => detailPlayerReady&&detailPlayer?.getPlayerState?.()===1;
+    window.pauseDetailVideo = () => {pendingDetailPause=true;try{detailPlayer?.pauseVideo?.();}catch{}};
     
     window.changeRate = function(rate) {
         if (detailPlayer && typeof detailPlayer.setPlaybackRate === 'function') {

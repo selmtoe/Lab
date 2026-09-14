@@ -1,3 +1,29 @@
+// Shared by the article site and the detailed library. No data API is involved.
+export function mountAppearanceControl() {
+    if (document.querySelector('.lab-appearance-toggle')) return;
+    const key = 'lab-appearance-mode', root = document.documentElement;
+    const control = document.createElement('button');
+    control.type = 'button';
+    control.className = 'lab-appearance-toggle';
+    control.setAttribute('aria-label', 'ダークモード');
+    const moon = '<path d="M17.5 13.4A7 7 0 0 1 10.6 4.5a7 7 0 1 0 6.9 8.9Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>';
+    const sun = '<circle cx="10" cy="10" r="3.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 1.8v1.4m0 13.6v1.4M1.8 10h1.4m13.6 0h1.4M4.2 4.2l1 1m9.6 9.6 1 1m0-11.6-1 1m-9.6 9.6-1 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>';
+    function apply(value, save = false) {
+        const dark = value === 'dark';
+        root.dataset.labTheme = dark ? 'dark' : 'light';
+        control.setAttribute('aria-pressed', String(dark));
+        control.title = (dark ? 'ライト' : 'ダーク') + 'モードに切り替える';
+        control.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true">' + (dark ? sun : moon) + '</svg>';
+        if (save) { try { localStorage.setItem(key, root.dataset.labTheme); } catch {} }
+    }
+    let initial = root.dataset.labTheme;
+    try { initial = localStorage.getItem(key); } catch {}
+    apply(initial);
+    control.addEventListener('click', () => apply(root.dataset.labTheme === 'dark' ? 'light' : 'dark', true));
+    window.addEventListener('storage', event => { if (event.key === key || event.key === null) apply(event.newValue); });
+    document.body.append(control);
+}
+
 export function youtubeId(value) {
     if (!value) return '';
     const url = new URL(value); let id = '';

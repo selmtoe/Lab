@@ -1,5 +1,8 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>テトリス資料庫 · LAB</title><link rel="stylesheet" href="library.css"><link rel="icon" href="data:,"></head>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>テトリス資料庫 · LAB</title><script>
+try { document.documentElement.dataset.labTheme = localStorage.getItem('lab-appearance-mode') === 'dark' ? 'dark' : 'light'; }
+catch { document.documentElement.dataset.labTheme = 'light'; }
+</script><link rel="stylesheet" href="library.css"><link rel="icon" href="data:,"></head>
 <body><header><a href="./index.html">LAB</a><strong>テトリス資料庫</strong><span id="access">読み込み中</span></header>
 <main><div class="toolbar"><label>資料を探す<input id="search" type="search" placeholder="選手、タグ、動画、時刻付きメモから検索"></label><label>種類<select id="kind"><option value="">すべて</option><option value="match">解析した試合</option><option value="video">動画</option><option value="article">記事</option><option value="tetofu">テト譜</option></select></label><label>解析結果<select id="status"><option value="">すべて</option><option value="complete">解析成功</option><option value="failed">解析失敗</option></select></label></div>
 <div id="owner" class="actions" hidden><button id="add">新しく登録</button><a href="./index.html">完成結果の取り込みはホームから</a><button id="bulk" class="secondary">表示中の試合をまとめて設定</button><button id="publish" class="secondary">公開する内容を確認</button><button id="backup" class="secondary">バックアップ</button><button id="trash" class="secondary">ごみ箱</button></div>
