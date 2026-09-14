@@ -1,4 +1,5 @@
 // The local editing workspace. Public article markup and routes stay untouched.
+import {choices,videoIndex,filterVideoIndex} from './lab-videos.js?v=20260915-videos1';
 export function createManager(ui){
     const {state,node,button,dialog,api,post,refresh,notice,openEdit,openVideoSettings,openImports,openAnalysis,openPublication,research,recordId,videoKey}=ui;
     const tabs=[['articles','記事'],['research','研究'],['trash','ごみ箱'],['settings','設定']];
@@ -127,6 +128,15 @@ export function createManager(ui){
         else if(section==='videos'||section==='research')typeFilter=setting(controls,'種類',[['','すべての動画'],['analysis','解析結果あり'],['link','リンクのみ']],saved.kind);
         else typeFilter=setting(controls,'分類',[['','すべての資料'],['candidate','研究候補'],['selected','厳選した局面'],['problem','問題'],['archived','保管済み'],['link','リンクのみ']],saved.kind);
         const sort=setting(controls,'並び順',[['updated','更新が新しい順'],['title','タイトル順'],['oldest','更新が古い順']],saved.sort);root.append(controls);
+        let playerFilter,opponentFilter,tagFilter;
+        if(section==='research'||section==='videos'){
+            const players=choices(state.records.filter(r=>r.kind==='match').flatMap(r=>r.players||[]));
+            playerFilter=setting(controls,'プレイヤー',[['','すべて'],...players],saved.player);
+            opponentFilter=setting(controls,'対戦相手',[['','すべて'],...players],saved.opponent);
+            tagFilter=setting(controls,'タグ',[['','すべて'],...choices(state.records.filter(r=>['match','video'].includes(r.kind)).flatMap(r=>r.tags||[]))],saved.tag);
+            actions.append(link('試合から探す','#video-matches'));
+            search.placeholder='動画名・プレイヤー・タグから探す';
+        }
         const bulk=node('div',undefined,'manager-bulk'),allLabel=node('label'),all=node('input');all.type='checkbox';all.setAttribute('aria-label','表示中の資料をすべて選択');allLabel.append(all,node('span','表示中を選択'));const selectedText=node('span','0件選択','manager-selection'),count=node('span',undefined,'manager-count');
         const bulkAction=button(section==='trash'?'選択を元に戻す':'選択をごみ箱へ',()=>change(unique(shown.filter(e=>selection.has(e.key)).flatMap(e=>e.records)),section==='trash',`${selection.size}項目`));bulkAction.disabled=true;bulk.append(allLabel,selectedText,bulkAction,count);root.append(bulk);
         const list=node('div',undefined,'manager-list');root.append(list);const pager=node('div',undefined,'manager-pagination');root.append(pager);
@@ -137,9 +147,10 @@ export function createManager(ui){
             const words=saved.query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
             filtered=allEntries.filter(entry=>{
                 const r=entry.records[0];if(section==='materials'&&saved.folder&&saved.folder!=='*'&&(r.research?.folderId||'')!==saved.folder)return false;
+                if(playerFilter&&!filterVideoIndex(videoIndex([{...entry.video,title:entry.title,labOwnTags:entry.records.find(r=>r.kind==='video')?.tags||[],labMatches:entry.records.filter(r=>r.kind==='match')}]),saved).length)return false;
                 if(section==='materials'&&saved.folder===''&&r.research?.folderId)return false;
                 if(saved.visibility&&(section==='articles'?(r.editorial?.status||(r.visibility==='public'?'published':'draft'))!==saved.visibility:(entry.records.some(r=>r.publication?.published)?'public':'private')!==saved.visibility))return false;
-                if(!words.every(word=>entry.records.some(r=>JSON.stringify([r.title,r.tags,r.description,r.content,r.research,r.players]).toLocaleLowerCase().includes(word))))return false;
+                if(!playerFilter&&!words.every(word=>entry.records.some(r=>JSON.stringify([r.title,r.tags,r.description,r.content,r.research,r.players]).toLocaleLowerCase().includes(word))))return false;
                 if(!saved.kind)return true;
                 if(section==='trash')return saved.kind==='video'?['video','match'].includes(r.kind):r.kind===saved.kind;
                 if(section==='articles')return articleFormat(r)===saved.kind;
@@ -176,6 +187,7 @@ export function createManager(ui){
             if(filtered.length>pageSize){const prev=button('前の40項目',()=>{page--;selection.clear();draw();});prev.disabled=page===0;const next=button('次の40項目',()=>{page++;selection.clear();draw();});next.disabled=(page+1)*pageSize>=filtered.length;pager.append(prev,node('span',`${page+1} / ${Math.ceil(filtered.length/pageSize)}`),next);}sync();
         }
         const update=()=>{saved.query=search.value;saved.visibility=scope.value;saved.kind=typeFilter.value;saved.sort=sort.value;page=0;selection.clear();draw();};search.oninput=update;scope.onchange=typeFilter.onchange=sort.onchange=update;
+        if(playerFilter)for(const [key,input]of [['player',playerFilter],['opponent',opponentFilter],['tag',tagFilter]])input.onchange=()=>{saved[key]=input.value;update();};
         all.onchange=()=>{for(const entry of shown)all.checked?selection.add(entry.key):selection.delete(entry.key);sync();};
         if(section==='trash'){
             list.append(node('p','ごみ箱を読み込んでいます…','manager-empty'));

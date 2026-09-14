@@ -6,7 +6,7 @@ export function createVideoViewer({origin,onPage,onPractice,onPause}) {
     frame.title='P1・P2の連動ビューワー';frame.allow='clipboard-write';frame.inert=true;
     const status=document.createElement('p');status.className='lab-viewer-status';status.setAttribute('role','status');status.textContent='ビューワーを読み込み中…';
     const url=new URL('F/',origin.replace(/\/?$/,'/'));url.searchParams.set('labViewer','1');
-    url.searchParams.set('labVersion','20260914-reader1');
+    url.searchParams.set('labVersion','20260915-videos1');
     const expectedOrigin=url.origin,abort=new AbortController();let ready=false,latest=null,sentKey=null,lastIndex=-1;
     const theme=()=>document.documentElement.dataset.labTheme==='dark'?'dark':'light';
     const send=(action,data)=>frame.contentWindow?.postMessage({type:'labViewerRequest',action,...data},expectedOrigin);
@@ -20,6 +20,7 @@ export function createVideoViewer({origin,onPage,onPractice,onPause}) {
         const message=event.data;if(!message||typeof message!=='object')return;
         if(message.type==='labViewerReady'){ready=true;sentKey=null;flush();return;}
         if(message.key!==latest?.key)return;
+        if(message.type==='labViewerSize'&&Number.isFinite(message.height)&&message.height>=100&&message.height<=4000){frame.style.height=message.height+'px';return;}
         if(message.type==='labViewerLoaded'){frame.dataset.ready='true';frame.inert=false;status.hidden=true;return;}
         if(message.type==='labViewerPage'&&Number.isInteger(message.index)&&message.index>=0&&message.index<latest.pages.length){lastIndex=message.index;onPage(message.index);}
         else if(message.type==='labViewerPractice')onPractice();

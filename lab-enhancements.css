@@ -48,7 +48,7 @@ button.preview-ts-item{width:100%;padding:0;border:0;background:none;text-align:
 .lab-comparison .lab-queue{max-width:100%}
 .lab-comparison .lab-boards.lab-viewer-host{display:block;position:relative;width:100%;margin:0 0 10px;container-type:inline-size}
 .lab-comparison .lab-viewer-host[hidden]{display:none}
-.lab-replay-viewer{display:block;width:100%;height:calc(120px + 50cqw);min-height:220px;border:0;border-radius:6px;background:var(--bg-color);opacity:0;transition:opacity .12s ease}
+.lab-replay-viewer{display:block;width:100%;height:calc(100px + 50cqw);min-height:0;border:0;border-radius:6px;background:var(--bg-color);opacity:0;transition:opacity .12s ease}
 .lab-replay-viewer[data-ready=true]{opacity:1}
 .lab-viewer-status{position:absolute;inset:40% 16px auto;text-align:center;font-size:12px;color:var(--text-muted)}
 @media(prefers-reduced-motion:reduce){.lab-replay-viewer{transition:none}}
@@ -170,6 +170,40 @@ button.preview-ts-item{width:100%;padding:0;border:0;background:none;text-align:
 
 .lab-match-tools{gap:8px;margin:0 0 10px;flex-wrap:wrap}
 .lab-match-tools[hidden]{display:none}
-.lab-copy-status{font-size:12px;color:var(--text-muted)}
 .lab-workbench>input[type=range]{width:100%;margin:8px 0}
 .lab-external-tools{flex-wrap:wrap}
+
+.card-video:has(.card-video-thumb){display:grid;grid-template-columns:140px minmax(0,1fr);column-gap:22px;align-content:start;position:relative}
+.card-video:has(.card-video-thumb)>*{grid-column:2;min-width:0}
+.card-video:has(.card-video-thumb)>.card-video-thumb{grid-column:1;grid-row:1/7;align-self:center;width:140px;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:7px;background:var(--bg-color)}
+.card-video .card-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-video .card-desc{-webkit-line-clamp:1;margin-bottom:8px}
+.card-video .card-title+div:not(.card-desc),.card-video .card-desc+div{max-height:30px;overflow:hidden}
+.card-video .lab-analysis-count{font-size:12px;margin-top:6px;color:var(--text-muted)}
+.card-video:has(.card-video-thumb)>.lab-card-edit{position:absolute;right:24px;top:24px;float:none;grid-column:auto}
+.card-video:has(.lab-card-edit)>.card-meta{padding-right:64px}
+.lab-video-library-heading{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.lab-video-tabs{display:flex;gap:8px;margin-bottom:18px}
+.lab-video-tabs .btn-outline[aria-pressed="true"]{background:color-mix(in srgb,var(--accent-color) 14%,var(--surface-color));border-color:var(--accent-color);color:var(--text-main)}
+.lab-video-filters{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.lab-video-filters label,.lab-match-player-filters label{display:flex;flex-direction:column;gap:5px;color:var(--text-muted);font-size:12px;min-width:0}
+.lab-video-filters label:first-child{flex:1 1 220px}
+.lab-video-filters input,.lab-video-filters select,.lab-match-player-filters select{font:inherit;font-size:14px;color:var(--text-main);background:var(--surface-color);border:1px solid var(--border-color);border-radius:7px;padding:8px 10px;min-width:0;max-width:100%}
+.lab-video-filters select{max-width:190px}
+.lab-video-count{font-size:13px;color:var(--text-muted);margin:0 0 20px}
+.lab-video-match-card .card-meta{justify-content:space-between;align-items:start}
+.lab-video-match-card .card-meta>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lab-video-match-card .card-meta>span:last-child{flex:none}
+.lab-video-match-time{color:var(--text-muted);font-size:13px;margin:4px 0 10px;font-variant-numeric:tabular-nums}
+.lab-video-pagination{display:flex;gap:16px;align-items:center;justify-content:center;margin:28px 0}
+.lab-match-player-filters{display:flex;gap:10px;margin:0 0 12px}
+.lab-match-player-filters label{flex:1}
+@media(max-width:600px){
+  .card-video:has(.card-video-thumb){grid-template-columns:84px minmax(0,1fr);column-gap:14px}
+  .card-video:has(.card-video-thumb)>.card-video-thumb{width:84px;align-self:start;margin-top:4px}
+  .card-video .card-title{font-size:17px}
+  .card-video .card-meta{font-size:11px;gap:6px;flex-wrap:wrap}
+  .lab-video-filters label{flex:1 1 calc(50% - 12px)}
+  .lab-video-filters label:first-child{flex-basis:100%}
+  .lab-video-filters select{max-width:100%;width:100%}
+}

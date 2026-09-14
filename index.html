@@ -14,7 +14,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script async src="https://www.youtube.com/iframe_api"></script>
-<link rel="stylesheet" href="lab-enhancements.css?v=20260914-reader1">
+<link rel="stylesheet" href="lab-enhancements.css?v=20260915-videos1">
 <link rel="stylesheet" href="lab-writer.css?v=20260914-reader1">
 
 <style>
@@ -336,7 +336,6 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
                 <a class="nav-item" href="#videos" onclick="router('videos')">Videos</a>
                 <a class="nav-item" href="#tetofu" onclick="router('tetofu')">Tetofu</a>
                 <a class="nav-item" href="#tags" onclick="router('tags')">Tags</a>
-                <a id="lab-analysis-nav" class="nav-item" href="#analysis" onclick="router('analysis')" hidden>Analysis</a>
             </nav>
             <div class="search-box">
                 <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
@@ -441,10 +440,11 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
             case 'dashboard': renderDashboard(); break;
             case 'articles': id ? renderArticleDetail(id) : renderArticleList(); break;
             case 'videos': id ? renderVideoDetail(id) : renderVideoList(); break;
+            case 'video-matches': window.LabExtension?.renderVideoLibrary({mode:'matches'}); break;
             case 'tetofu': renderTetofu(); break;
             case 'tags': id ? renderTagDetail(id) : renderTagList(); break;
             case 'search': renderSearchResults(query); break;
-            case 'analysis': window.LabExtension?.renderAnalysis(); break;
+            case 'analysis': router('videos'); break;
             case 'research': window.LabExtension?.renderResearch(id); break;
         }
         window.LabExtension?.afterRoute(page, id);
@@ -527,47 +527,11 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
             else item.action?.();
         };
 
-        // 動画用の一意なIDを生成
-        const uniqueId = Math.random().toString(36).substr(2, 9);
-        const playerDomId = item.type === '動画' ? `yt-list-${item.id}-${uniqueId}` : null;
-
-        // プレビュー用に動画のタイムスタンプを抽出
-        let tsPreview = '';
-        if (item.type === '動画' && item.content) {
-            const matches = [...item.content.matchAll(TS_LINE_REGEX)];
-            if(matches.length > 0) {
-                tsPreview = `<div class="preview-ts-list">`;
-                let count = 0;
-                matches.forEach(m => {
-                    const [full, min, sec, tagsRaw, desc] = m;
-                    const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()) : [];
-                    
-                    if (highlightTag && !tags.includes(highlightTag)) return;
-                    if (!highlightTag && count >= 3) return;
-
-                    const timeStr = `${min}:${sec}`;
-                    const timeSec = parseInt(min) * 60 + parseInt(sec);
-                    
-                    // 修正: カード内のプレイヤーを操作するonclickイベントを設定
-                    tsPreview += `
-                        <button type="button" class="preview-ts-item" onclick="seekListVideo('${playerDomId}', ${timeSec}, event)">
-                            <span class="ts-badge">▶ ${timeStr}</span>
-                            <span>${escapeHtml(desc.substring(0, 40))}${desc.length>40?'...':''}</span>
-                        </button>`;
-                    count++;
-                });
-                tsPreview += `</div>`;
-            }
-        }
-
-        // 動画プレイヤーの埋め込み (YouTube API用Div)
-        let videoEmbed = '';
-        if (item.type === '動画' && item.youtubeId) {
-            videoEmbed = `
-            <div class="video-wrapper" style="margin-bottom:16px;">
-                <div id="${playerDomId}"></div>
-            </div>`;
-        }
+        const isVideo=item.type==='動画';
+        if(isVideo)card.classList.add('card-video');
+        const videoEmbed=isVideo&&/^[\w-]{11}$/.test(item.youtubeId||'')
+            ? `<img class="card-video-thumb" src="https://i.ytimg.com/vi/${escapeHtml(item.youtubeId)}/mqdefault.jpg" width="160" height="90" loading="lazy" decoding="async" alt="">` : '';
+        const tsPreview='';
 
         // 修正: タイトル色を修正（黒に戻す）
         const titleHtml = `<div class="card-title"></div>`;
@@ -591,15 +555,6 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
         if(target.tagName==='A'){target.href=item.externalUrl||'#'+(item.type==='動画'?'videos':'articles')+'/'+encodeURIComponent(item.id);if(item.externalUrl){target.target='_blank';target.rel='noopener';}target.onclick=e=>e.stopPropagation();}
         else{target.type='button';target.onclick=e=>{e.stopPropagation();card.onclick?.({target:card});};}title.append(target);
 
-        // カード追加後にYouTubeプレイヤーを初期化
-        if (item.type === '動画' && item.youtubeId && window.YT && window.YT.Player) {
-            listPlayers[playerDomId] = new YT.Player(playerDomId, {
-                videoId: item.youtubeId,
-                height: '100%',
-                width: '100%',
-                playerVars: { 'rel': 0 }
-            });
-        }
     }
 
     // 1. DASHBOARD
@@ -611,7 +566,6 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
             <h2 class="section-title" style="margin-top: 60px;">ツールへのリンク</h2>
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
                 <a href="https://selmtoe.github.io/Tetris_Simulator/" target="_blank" class="btn-outline">シミュレータを開く ↗</a>
-                <a href="https://selmtoe.github.io/Tetris_Simulator/F/index.html" target="_blank" class="btn-outline">譜面エディタを開く ↗</a>
             </div>
         `;
         const list = document.getElementById('dash-list');
@@ -656,6 +610,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
 
     // 4. VIDEOS (List)
     function renderVideoList() {
+        if(window.LabExtension?.renderVideoLibrary)return window.LabExtension.renderVideoLibrary();
         mainView.innerHTML = `<h2 class="section-title">動画研究</h2><div class="list-container" id="video-list"></div>`;
         const list = document.getElementById('video-list');
         getVideos().forEach(v => {
@@ -932,6 +887,6 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
     observer.observe(document.getElementById('main-view'), { childList: true, subtree: true });
 
 </script>
-<script type="module" src="lab-enhancements.js?v=20260914-reader1"></script>
+<script type="module" src="lab-enhancements.js?v=20260915-videos1"></script>
 </body>
 </html>
