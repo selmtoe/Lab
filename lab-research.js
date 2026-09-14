@@ -1,4 +1,4 @@
-import {timeText, pageState, stateFromUrl} from './library-tools.js?v=20260914-analysis2';
+import {timeText, pageState, stateFromUrl} from './library-tools.js?v=20260914-trash1';
 
 // The actual viewer owns rendering and its controls; Lab only links its page to video time.
 export function createVideoViewer({origin,onPage,onPractice,onPause}) {
@@ -158,10 +158,9 @@ export function createResearch(ui) {
         field(form,'問題文（例：このNEXTで地形を崩さずに掘り進めてください）','prompt',record.research?.prompt||'','textarea');
         field(form,'解答・考え方（閲覧時は折りたたみ）','answer',record.research?.answer||'','textarea');
         field(form,'研究メモ（公開には含めません）','notes',record.research?.notes||'','textarea');
-        field(form,'公開範囲','visibility',record.visibility||'private','text',[['private','このPCだけ'],['public','公開対象にする']]);
-        form.append(node('p','「公開対象」にして保存した後、「公開管理」から送信するとサイトに反映されます。'));
+        form.append(node('p','資料はこのPCに保存します。記事へ引用し、その記事を公開すると読者に表示されます。'));
         footer(d,form,'保存する',async()=>{const v=Object.fromEntries(new FormData(form));if(v.stage==='problem'&&!v.prompt.trim())throw Error('問題として保存するには問題文を入力してください。');
-            await post('/api/records',{id:record.id,revision:record.revision,title:v.title,tags:v.tags.split(',').map(t=>t.trim()).filter(Boolean),visibility:v.visibility,
+            await post('/api/records',{id:record.id,revision:record.revision,title:v.title,tags:v.tags.split(',').map(t=>t.trim()).filter(Boolean),
                 research:{...record.research,folderId:v.folderId,stage:v.stage,prompt:v.prompt,answer:v.answer,notes:v.notes}});d.close();await refresh();notice('研究資料を更新しました。');});d.showModal();
     }
     function renderCitations(record){
@@ -265,8 +264,8 @@ export function createResearch(ui) {
             ['4. 局面を調べて記事へ入れる','P1・P2はビューワーに並んで表示されます。気になる局面で「記事に盤面を挿入」を押すと両方を記事へ追加できます。あとで使う場合は「あとで使う局面として保存」を押します。AIの指摘からも該当局面へ移動できます。'],
             ['5. 難地形を厳選する','「研究ノート」に候補が集まります。タグや研究メモで比較し、「整理・問題化」で「厳選した難地形」に移します。保留にもできます。'],
             ['6. 記事を書く・問題にする','「記事を書く」から本文に直接入力します。見出しや太字は上の道具、局面は右の資料棚から挿入できます。引用の並べ替え・削除も本文の中で操作します。書きかけはこのPCに自動保存され、記事の保存は右上のボタンです。問題は研究ノートの「整理・問題化」で作ります。'],
-            ['7. Labに公開する','動画設定にYouTubeのURLを貼り、公開したい資料を「公開対象」にします。「管理メニュー」→「公開管理」で内容を見て「Labに公開する」を押します。PCの動画や非公開の研究メモは送信しません。'],
-            ['資料を削除する','研究ノートはカードの「ごみ箱に移す」で削除できます。記事は記事ページから、その他は「管理メニュー」→「詳細管理」→資料→「編集する」→「ごみ箱に移す」です。「管理メニュー」→「ごみ箱」から資料を選び、「資料を戻す」で復元できます。公開済みの資料は次の公開操作でサイトにも反映されます。'],
+            ['7. Labに公開する','記事の編集画面で「公開する」を押します。動画解析は本文なしでも公開できます。保存だけでは読者に反映されません。引用用のフォルダや研究メモは公開しません。'],
+            ['資料を削除する','各一覧の「ごみ箱へ」で公開も停止します。「ごみ箱」の「元に戻す」では下書きに戻り、自動では公開しません。「ごみ箱を空にする」で全件を完全に削除できます。引用済みの局面や元の動画ファイルは残ります。'],
             ['編集できる範囲','管理画面はこのPCの中からだけ接続できます。公開サイトに編集用サーバーはありません。ただし、このPCを操作できる人やプログラムまで本人と区別するログイン機能ではありません。GitHub側の編集権限はGitHubアカウントの設定に従います。']
         ];
         for(const [title,text]of groups){d.append(node('h3',title),node('p',text));}d.append(button('閉じる',()=>d.close()));d.showModal();

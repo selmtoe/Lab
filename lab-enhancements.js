@@ -1,5 +1,5 @@
-import {youtubeId,timeText,encodeState,stateFromUrl,pageState,playbackPosition,videoSettingsSave,videoSettingsFields,mountAppearanceControl} from './library-tools.js?v=20260914-analysis2';
-import {createResearch,createVideoViewer} from './lab-research.js?v=20260914-analysis2';
+import {youtubeId,timeText,encodeState,stateFromUrl,pageState,playbackPosition,videoSettingsSave,videoSettingsFields,mountAppearanceControl} from './library-tools.js?v=20260914-trash1';
+import {createResearch,createVideoViewer} from './lab-research.js?v=20260914-trash1';
 
 mountAppearanceControl();
 
@@ -40,7 +40,7 @@ function rebuildViews(){
 async function refresh(preserveTime=false){const context=preserveTime?state.captureResearch?.():null,current=preserveTime?window.labVideoTime?.():NaN;const data=state.token?await api('/api/records'):await(await fetch('./data/library.json',{cache:'no-cache'})).json();state.records=data.records||[];state.editorialArticles=null;state.replays.clear();rebuildViews();window.LabExtension.ready=true;window.dispatchEvent(new HashChangeEvent('hashchange'));if(!context&&Number.isFinite(current)&&location.hash.startsWith('#videos/'))window.seekDetailVideo(current,{pause:true});}
 function openEdit(record={}){
     state.captureResearch?.();window.pauseDetailVideo?.();
-    if(!record._researchOnly&&!record._materialOnly&&(!record.kind||['article','video','tetofu'].includes(record.kind))){if(record.id)research.setTarget(record.id);return import('./vendor/lab-editor.js?v=20260914-analysis2').then(m=>m.openArticle(record,{node,button,post,api,refresh,notice,state,research,recordId,field,setResearchTarget:research.setTarget,goToResearch:research.openRelated,goToArticles:()=>window.router(manager?'manage':'articles',manager?'articles':null),trashArticle:manager?(r,done)=>manager.change([r],false,`「${r.title}」`,done):undefined}));}
+    if(!record._researchOnly&&!record._materialOnly&&(!record.kind||['article','video','tetofu'].includes(record.kind))){if(record.id)research.setTarget(record.id);return import('./vendor/lab-editor.js?v=20260914-trash1').then(m=>m.openArticle(record,{node,button,post,api,refresh,notice,state,research,recordId,field,setResearchTarget:research.setTarget,goToResearch:research.openRelated,goToArticles:()=>window.router(manager?'manage':'articles',manager?'articles':null),trashArticle:manager?(r,done)=>manager.change([r],false,`「${r.title}」`,done):undefined}));}
     const d=dialog(record.kind==='article'?'外部記事のリンクを編集':record.id?'編集する':'新しく追加する'),form=node('form');d.append(form);
     const title=field(form,'タイトル','title',record.title||'');title.required=true;title.maxLength=250;
     const kind=field(form,'種類','kind',record.kind||'article','text',[['article','記事'],['video','動画'],['tetofu','テト譜']]);
@@ -50,8 +50,7 @@ function openEdit(record={}){
     const preview=node('div',undefined,'article-body lab-edit-preview');preview.hidden=true;form.append(button('本文の見え方を確認',()=>{preview.innerHTML=window.renderMarkdown(content.value);preview.hidden=!preview.hidden;}),preview);
     const url=field(form,'外部リンク（必要な場合だけ）','url',record.url||'','url'),youtube=field(form,'YouTubeのURL','youtube',record.youtubeId?'https://www.youtube.com/watch?v='+record.youtubeId:'','url');
     const updateFields=()=>{youtube.parentElement.hidden=kind.value!=='video';help.textContent=kind.value==='video'?'[13:46]{積み, 判断} メモ の形式で書くと、その時刻に移動できます。':'# 見出し、**太字**、[リンク名](URL) が使えます。局面を記事に使うときは、記事エディタの資料棚から選びます。';};kind.onchange=updateFields;updateFields();
-    field(form,'公開範囲','visibility',record.visibility||'private','text',[['private','このPCだけ'],['public','公開対象にする']]);
-    form.append(node('p','保存はこのPCに行います。公開サイトへの反映は「公開管理」から送信してください。','lab-help-text'));
+    form.append(node('p','保存はこのPCに行います。記事として載せる場合は記事の編集画面から公開してください。','lab-help-text'));
     footer(d,form,'保存する',async()=>{const values=Object.fromEntries(new FormData(form));values.kind=kind.value;values.youtubeId=youtubeId(values.youtube);delete values.youtube;values.tags=values.tags.split(',').map(t=>t.trim()).filter(Boolean);if(record.id){values.id=record.id;values.revision=record.revision;}if(record.videoKey)values.videoKey=record.videoKey;
         const saved=await post('/api/records',values);d.close();await refresh(true);notice('保存しました。');if(!record.id)window.router(manager?'manage':saved.kind==='article'?'articles':saved.kind==='video'?'videos':'tetofu',manager?(saved.kind==='article'?'articles':saved.kind==='video'?'videos':'materials'):null);});
     if(record.id)form.append(trashButton(record,()=>d.close()));d.showModal();
@@ -74,7 +73,7 @@ function openVideoSettings(video){
     field(form,'YouTubeのURL','youtube',initialYoutube?'https://www.youtube.com/watch?v='+initialYoutube:'','url');
     field(form,'タグ（カンマ区切り。試合にも追加します）','tags',(pending?initial.tags:video.tags||[]).join(', '));
     form.append(node('p','タグは1つ100文字以内・1資料100個までです。','lab-help-text'));
-    field(form,'公開範囲（この動画の解析結果にも適用）','visibility',pending?.patch.visibility||'','text',[['','変更しない'],['private','このPCだけ'],['public','公開する']]);
+    form.append(node('p','この設定はPCに保存します。読者へ反映するには動画記事の「公開する」を押してください。','lab-help-text'));
     const more=node('details');more.append(node('summary','動画の時刻がずれる場合'));const offsetInput=field(more,'YouTubeの時刻 − 元動画の時刻（秒）','offset',pending?initial.youtubeOffsetSeconds:video.youtubeOffsetSeconds||0,'number');offsetInput.step='any';offsetInput.required=true;more.append(node('p','小数も使えます。補正をなくす場合は「0」を入力してください。','lab-help-text'));form.append(more);
     form.append(node('p',`この動画に関連する ${pending?pending.records.length:video.labMatches.length} 試合をまとめて設定します。動画ファイルはアップロードしません。`));
     const actions=node('div',undefined,'lab-inline-actions'),submit=node('button','保存する','btn-outline lab-primary');submit.type='submit';
@@ -121,10 +120,12 @@ async function openImports(){
     try{const {batches}=await api('/api/batches');const render=()=>{list.replaceChildren();for(const batch of batches.filter(b=>(b.title+' '+b.folder).toLowerCase().includes(search.value.toLowerCase()))){const row=node('div',undefined,'lab-list-row');row.append(node('strong',batch.title),node('p',`${batch.matches}試合 · ${batch.date} · ${batch.folder}`));const b=button('完成結果を確認',async()=>{b.disabled=true;status.textContent='完成結果を確認しています…';try{showPreview(await post('/api/prepare-import',{id:batch.id}));status.textContent='';}finally{b.disabled=false;}});row.append(b);list.append(row);}};search.oninput=render;render();}catch(e){status.textContent=e.message;}
 }
 async function openPublication(){
-    const result=await api('/api/public-preview'),d=dialog('公開する内容を確認');d.append(node('p',`公開 ${result.records.length}件 / このPCだけ ${result.privateCount}件`),node('p','公開する資料・解析結果・公開メモだけを送信します。動画はYouTubeへのリンクです。'));
-    const list=node('div',undefined,'lab-scroll');for(const r of result.records)list.append(node('p',r.title));const status=node('p');
-    const publish=button('Labに公開する',async()=>{publish.disabled=true;status.textContent='公開サイトに反映しています…';try{const value=await post('/api/publish',{digest:result.digest});status.textContent=value.message;}catch(e){status.textContent=e.message;}finally{publish.disabled=false;}});publish.classList.add('lab-primary');
-    d.append(list,publish,button('公開用ファイルだけ保存',async()=>{const value=await post('/api/export-public',{digest:result.digest});status.textContent=value.message;}),button('閉じる',()=>d.close()),status);d.showModal();
+    const result=await api('/api/public-preview'),d=dialog('現在の公開サイト');
+    const articles=result.records.filter(r=>r.kind!=='match');
+    d.append(node('p',`公開中の記事 ${articles.length}件`),node('p','保存はこのPCだけに反映されます。公開・更新は各記事の編集画面で「公開する」を押します。ごみ箱へ移すと公開も停止します。','lab-help-text'));
+    const site=node('a','閲覧者の画面を開く','btn-outline');site.href='https://selmtoe.github.io/Lab/';site.target='_blank';site.rel='noopener';d.append(site);
+    const list=node('div',undefined,'lab-scroll');for(const r of articles)list.append(node('p',r.title));
+    d.append(list,button('閉じる',()=>d.close()));d.showModal();
 }
 async function openAnalysis(){const result=await post('/api/open-native',{});notice(result.message);}
 function openBookmark(video){
@@ -138,11 +139,18 @@ function openBookmark(video){
 
 // Video/replay additions are attached to the existing router and YouTube player.
 function boardElement(board,label,player=null){
-    const wrap=node('div',undefined,'lab-board-block'),grid=node('div',undefined,'lab-board');wrap.append(node('div',label),grid);
+    const wrap=node('div',undefined,'lab-board-block'),grid=node('div',undefined,'lab-board');wrap.append(node('div',label,'lab-board-label'),grid);
     const cells=typeof board==='string'?board:(board||[]).flat().map(c=>c||'_').join('');
     for(const value of cells.padStart(400,'_').slice(-200))grid.append(node('span',undefined,'lab-cell lab-'+(/^[IOTLSJZG]$/.test(value)?value:'empty')));
-    if(player){const queue=node('div',undefined,'lab-queue');queue.append(node('small','HOLD','lab-queue-label'),player.hold?mino(player.hold):node('span','なし'));
-        queue.append(node('small','手元・NEXT','lab-queue-label'));const pieces=node('div',undefined,'lab-queue-pieces');for(const piece of ((player.active||'')+(player.next||'')).replace(/[^IOTLSJZ]/g,'').slice(0,7))pieces.append(mino(piece));queue.append(pieces);wrap.append(queue);}
+    if(player){
+        wrap.classList.add('lab-board-with-queues');
+        const hold=node('div',undefined,'lab-queue lab-hold'),next=node('div',undefined,'lab-queue lab-next');
+        hold.append(node('small','HOLD','lab-queue-label'),player.hold?mino(player.hold):node('span','—','lab-empty-hold'));
+        next.append(node('small',player.active?'手元 / NEXT':'NEXT','lab-queue-label'));
+        const pieces=node('div',undefined,'lab-queue-pieces');
+        for(const piece of ((player.active||'')+(player.next||'')).replace(/[^IOTLSJZ]/g,'').slice(0,7))pieces.append(mino(piece));
+        next.append(pieces);wrap.append(hold,next);
+    }
     return wrap;
 }
 function mino(piece){
@@ -400,7 +408,7 @@ try{const response=['127.0.0.1','localhost'].includes(location.hostname)?await f
 // A running older server may not have the new static/API allowlist yet. Preserve
 // the established editing entry points until it is restarted; public pages do
 // not load any personal-workspace code or styles.
-if(state.token){try{await api('/api/drafts');const {createManager}=await import('./lab-manager.js?v=20260914-analysis2');manager=createManager({state,node,button,dialog,api,post,refresh,notice,openEdit,openVideoSettings,editVideoArticle,openImports,openAnalysis,openPublication,research,recordId,videoKey});const style=node('link');style.rel='stylesheet';style.href='./lab-manager.css?v=20260914-analysis2';document.head.append(style);}catch{notice('新しい編集室を使うには、資料庫のサーバーを起動し直してください。現在の編集機能は引き続き使えます。');}}
+if(state.token){try{await api('/api/drafts');const {createManager}=await import('./lab-manager.js?v=20260914-trash1');manager=createManager({state,node,button,dialog,api,post,refresh,notice,openEdit,openVideoSettings,editVideoArticle,openImports,openAnalysis,openPublication,research,recordId,videoKey});const style=node('link');style.rel='stylesheet';style.href='./lab-manager.css?v=20260914-trash1';document.head.append(style);}catch{notice('新しい編集室を使うには、資料庫のサーバーを起動し直してください。現在の編集機能は引き続き使えます。');}}
 if(state.token){document.body.classList.add('lab-editor-mode');
     if(manager){
     const nav=document.querySelector('.nav-links'),analysisNav=document.getElementById('lab-analysis-nav');nav.replaceChildren();nav.setAttribute('aria-label','編集室');
