@@ -1,5 +1,5 @@
 // The local editing workspace. Public article markup and routes stay untouched.
-import {choices,videoIndex,filterVideoIndex} from './lab-videos.js?v=20260915-videos1';
+import {choices,videoIndex,filterVideoIndex} from './lab-videos.js?v=20260915-compact2';
 export function createManager(ui){
     const {state,node,button,dialog,api,post,refresh,notice,openEdit,openVideoSettings,openImports,openAnalysis,openPublication,research,recordId,videoKey}=ui;
     const tabs=[['articles','記事'],['research','研究'],['trash','ごみ箱'],['settings','設定']];
@@ -128,11 +128,10 @@ export function createManager(ui){
         else if(section==='videos'||section==='research')typeFilter=setting(controls,'種類',[['','すべての動画'],['analysis','解析結果あり'],['link','リンクのみ']],saved.kind);
         else typeFilter=setting(controls,'分類',[['','すべての資料'],['candidate','研究候補'],['selected','厳選した局面'],['problem','問題'],['archived','保管済み'],['link','リンクのみ']],saved.kind);
         const sort=setting(controls,'並び順',[['updated','更新が新しい順'],['title','タイトル順'],['oldest','更新が古い順']],saved.sort);root.append(controls);
-        let playerFilter,opponentFilter,tagFilter;
+        let playerFilter,tagFilter;
         if(section==='research'||section==='videos'){
             const players=choices(state.records.filter(r=>r.kind==='match').flatMap(r=>r.players||[]));
             playerFilter=setting(controls,'プレイヤー',[['','すべて'],...players],saved.player);
-            opponentFilter=setting(controls,'対戦相手',[['','すべて'],...players],saved.opponent);
             tagFilter=setting(controls,'タグ',[['','すべて'],...choices(state.records.filter(r=>['match','video'].includes(r.kind)).flatMap(r=>r.tags||[]))],saved.tag);
             actions.append(link('試合から探す','#video-matches'));
             search.placeholder='動画名・プレイヤー・タグから探す';
@@ -187,7 +186,7 @@ export function createManager(ui){
             if(filtered.length>pageSize){const prev=button('前の40項目',()=>{page--;selection.clear();draw();});prev.disabled=page===0;const next=button('次の40項目',()=>{page++;selection.clear();draw();});next.disabled=(page+1)*pageSize>=filtered.length;pager.append(prev,node('span',`${page+1} / ${Math.ceil(filtered.length/pageSize)}`),next);}sync();
         }
         const update=()=>{saved.query=search.value;saved.visibility=scope.value;saved.kind=typeFilter.value;saved.sort=sort.value;page=0;selection.clear();draw();};search.oninput=update;scope.onchange=typeFilter.onchange=sort.onchange=update;
-        if(playerFilter)for(const [key,input]of [['player',playerFilter],['opponent',opponentFilter],['tag',tagFilter]])input.onchange=()=>{saved[key]=input.value;update();};
+        if(playerFilter)for(const [key,input]of [['player',playerFilter],['tag',tagFilter]])input.onchange=()=>{saved[key]=input.value;update();};
         all.onchange=()=>{for(const entry of shown)all.checked?selection.add(entry.key):selection.delete(entry.key);sync();};
         if(section==='trash'){
             list.append(node('p','ごみ箱を読み込んでいます…','manager-empty'));

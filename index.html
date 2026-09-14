@@ -14,7 +14,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script async src="https://www.youtube.com/iframe_api"></script>
-<link rel="stylesheet" href="lab-enhancements.css?v=20260915-videos1">
+<link rel="stylesheet" href="lab-enhancements.css?v=20260915-compact2">
 <link rel="stylesheet" href="lab-writer.css?v=20260914-reader1">
 
 <style>
@@ -661,8 +661,8 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
       
                     <h1 class="article-title" style="font-size:24px;">${escapeHtml(v.title)}</h1>
 
-                    <div class="card-meta">${v.date}</div>
-                    <div>${createTagHtml(v.tags)}</div>
+                    <div class="card-meta lab-video-date">${v.date}</div>
+                    <div class="lab-video-tags">${createTagHtml(v.tags)}</div>
                 </div>
 
                 <div class="article-body">
@@ -887,6 +887,6 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
     observer.observe(document.getElementById('main-view'), { childList: true, subtree: true });
 
 </script>
-<script type="module" src="lab-enhancements.js?v=20260915-videos1"></script>
+<script type="module" src="lab-enhancements.js?v=20260915-compact2"></script>
 </body>
 </html>

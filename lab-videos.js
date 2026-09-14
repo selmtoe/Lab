@@ -35,7 +35,7 @@ export function filterVideoIndex(index, filters = {}) {
 }
 
 export function createVideoLibrary({state, node, button, openMatch}) {
-    const filters = {query:'', player:'', opponent:'', tag:'', analysis:'', sort:'newest'};
+    const filters = {query:'', player:'', tag:'', analysis:'', sort:'newest'};
     let mode = 'videos', page = 0;
     const time = value => {const seconds = Math.max(0, Math.floor(Number(value) || 0));return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');};
     function render(options = {}) {
@@ -65,7 +65,6 @@ export function createVideoLibrary({state, node, button, openMatch}) {
         };
         const players = choices(index.flatMap(e => e.matches.flatMap(r => r.match.players || [])));
         select('プレイヤー', 'player', [['','すべて'], ...players]);
-        select('対戦相手', 'opponent', [['','すべて'], ...players]);
         select('タグ', 'tag', [['','すべて'], ...choices(state.videos.flatMap(v => [...(v.tags || []), ...(v.labMatches || []).flatMap(m => m.tags || [])]))]);
         select('解析', 'analysis', [['','すべて'], ['yes','解析あり'], ['no','解析なし']]);
         select('並び順', 'sort', [['newest','新しい順'], ['oldest','古い順'], ['title','タイトル順']]);
