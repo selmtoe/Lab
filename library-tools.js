@@ -115,3 +115,11 @@ export function videoSettingsFields(values) {
     if(tags.length>100)reject('tags',`タグが${tags.length}個あります。1つの資料に付けられるタグは100個までです。`);
     return {title,youtubeId:id,youtubeOffsetSeconds:offset,tags,...(values.visibility?{visibility:values.visibility}:{})};
 }
+// Small, portable covers travel with an article's saved and published revision.
+export const DEFAULT_THUMBNAIL='data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="white"/><text x="320" y="198" text-anchor="middle" font-family="Arial,sans-serif" font-size="72" font-weight="700" letter-spacing="9" fill="#79877f">LAB</text></svg>');
+export function thumbnailSource(record={}){
+    const value=typeof record.thumbnail==='string'?record.thumbnail.trim():'';
+    if(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value))return value;
+    if(value){try{const url=new URL(value);if(['https:','http:'].includes(url.protocol))return url.href;}catch{}}
+    return /^[\w-]{11}$/.test(record.youtubeId||'')?'https://i.ytimg.com/vi/'+record.youtubeId+'/mqdefault.jpg':DEFAULT_THUMBNAIL;
+}

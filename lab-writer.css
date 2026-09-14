@@ -30,3 +30,10 @@
  .writer-toolbar{flex-wrap:nowrap;overflow-x:auto;top:0;padding:6px 8px}.writer-toolbar>*{flex-shrink:0}
 }
 .writer-timestamp-row .writer-timestamp-scope{grid-column:1/-1;display:flex;align-items:center;gap:6px;margin-bottom:8px}.writer-timestamp-scope input{display:inline-block;width:auto;margin:0;accent-color:var(--green)}
+.writer-thumbnail{margin:18px 0;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.writer-thumbnail img{display:block;width:140px;height:auto;aspect-ratio:16/9;object-fit:cover;background:white;border:1px solid var(--line);border-radius:7px;margin:10px 0}
+.writer-thumbnail input[type=file]{padding:6px 0;font-size:12px;max-width:100%;border:0}
+.writer-thumbnail input::file-selector-button,.writer-thumbnail button{border:1px solid var(--line);background:var(--surface-color);color:var(--text-main);border-radius:20px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
+.writer-thumbnail .writer-hint{margin:8px 0 0}
+
+.writer-auto-tags{display:flex;gap:4px;flex-wrap:wrap;margin:10px 0}.writer-auto-tags>.writer-hint{flex-basis:100%;margin:0}.writer-auto-tags .tag{font-size:11px;margin:0}

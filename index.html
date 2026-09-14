@@ -14,8 +14,8 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script async src="https://www.youtube.com/iframe_api"></script>
-<link rel="stylesheet" href="lab-enhancements.css?v=20260915-compact2">
-<link rel="stylesheet" href="lab-writer.css?v=20260914-reader1">
+<link rel="stylesheet" href="lab-enhancements.css?v=20260915-covers1">
+<link rel="stylesheet" href="lab-writer.css?v=20260915-covers1">
 
 <style>
     :root {
@@ -529,8 +529,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
 
         const isVideo=item.type==='動画';
         if(isVideo)card.classList.add('card-video');
-        const videoEmbed=isVideo&&/^[\w-]{11}$/.test(item.youtubeId||'')
-            ? `<img class="card-video-thumb" src="https://i.ytimg.com/vi/${escapeHtml(item.youtubeId)}/mqdefault.jpg" width="160" height="90" loading="lazy" decoding="async" alt="">` : '';
+        const videoEmbed='';
         const tsPreview='';
 
         // 修正: タイトル色を修正（黒に戻す）
@@ -560,10 +559,10 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
     // 1. DASHBOARD
     function renderDashboard() {
         mainView.innerHTML = `
-            <h2 class="section-title">最新のノート</h2>
+            <h2 class="section-title">最新</h2>
             <div class="list-container" id="dash-list"></div>
             
-            <h2 class="section-title" style="margin-top: 60px;">ツールへのリンク</h2>
+            <h2 class="section-title" style="margin-top: 60px;">リンク</h2>
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
                 <a href="https://selmtoe.github.io/Tetris_Simulator/" target="_blank" class="btn-outline">シミュレータを開く ↗</a>
             </div>
@@ -887,6 +886,6 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
     observer.observe(document.getElementById('main-view'), { childList: true, subtree: true });
 
 </script>
-<script type="module" src="lab-enhancements.js?v=20260915-compact2"></script>
+<script type="module" src="lab-enhancements.js?v=20260915-covers1"></script>
 </body>
 </html>

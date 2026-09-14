@@ -1,5 +1,8 @@
 // Metadata-only index: opening a result is the first time a replay is decoded.
 export const normalize = value => String(value ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ja');
+export function mergedTags(...groups){const unique=new Map();for(const tag of groups.flat()){const label=String(tag??'').trim(),key=normalize(label);if(key&&!unique.has(key))unique.set(key,label);}return [...unique.values()];}
+export function matchTags(match){return mergedTags(match.tags||[],['動画解析'],match.players||[]);}
+export function videoTags(video){return mergedTags(video.tags||[],...(video.labMatches||[]).flatMap(m=>[matchTags(m),...(m.bookmarks||[]).map(b=>b.tags||[])]));}
 export function samePlayers(players = [], player = '', opponent = '') {
     const names = players.map(normalize), p = normalize(player), o = normalize(opponent);
     if (p && o) return names.some((name, i) => name === p && names.some((other, j) => i !== j && other === o));
@@ -16,8 +19,8 @@ export function videoIndex(videos) {
         const common = [video.title, video.labVirtual ? '' : video.description, ...ownTags];
         const matches = (video.labMatches || []).map((match, index) => ({
             match, index,
-            tags: new Set([...ownTags, ...(match.tags || []), ...(match.bookmarks || []).flatMap(b => b.tags || [])].map(normalize)),
-            text: normalize([...common, match.title, ...(match.players || []), ...(match.tags || []), ...(match.bookmarks || []).flatMap(b => [b.label, b.note, ...(b.tags || [])])].join(' '))
+            tags: new Set([...ownTags, ...matchTags(match), ...(match.bookmarks || []).flatMap(b => b.tags || [])].map(normalize)),
+            text: normalize([...common, match.title, ...matchTags(match), ...(match.bookmarks || []).flatMap(b => [b.label, b.note, ...(b.tags || [])])].join(' '))
         }));
         return {video, matches, tags: new Set(ownTags.map(normalize)), text: normalize(common.join(' '))};
     });

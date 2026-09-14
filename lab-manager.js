@@ -1,5 +1,5 @@
 // The local editing workspace. Public article markup and routes stay untouched.
-import {choices,videoIndex,filterVideoIndex} from './lab-videos.js?v=20260915-compact2';
+import {choices,videoIndex,filterVideoIndex,videoTags} from './lab-videos.js?v=20260915-covers1';
 export function createManager(ui){
     const {state,node,button,dialog,api,post,refresh,notice,openEdit,openVideoSettings,openImports,openAnalysis,openPublication,research,recordId,videoKey}=ui;
     const tabs=[['articles','記事'],['research','研究'],['trash','ごみ箱'],['settings','設定']];
@@ -132,7 +132,7 @@ export function createManager(ui){
         if(section==='research'||section==='videos'){
             const players=choices(state.records.filter(r=>r.kind==='match').flatMap(r=>r.players||[]));
             playerFilter=setting(controls,'プレイヤー',[['','すべて'],...players],saved.player);
-            tagFilter=setting(controls,'タグ',[['','すべて'],...choices(state.records.filter(r=>['match','video'].includes(r.kind)).flatMap(r=>r.tags||[]))],saved.tag);
+            tagFilter=setting(controls,'タグ',[['','すべて'],...choices(state.videos.flatMap(videoTags))],saved.tag);
             actions.append(link('試合から探す','#video-matches'));
             search.placeholder='動画名・プレイヤー・タグから探す';
         }
@@ -171,7 +171,7 @@ export function createManager(ui){
                 if(section==='trash')heading.append(node('span',entry.title));else heading.append(button(entry.title,()=>section==='articles'&&!entry.articleVideo?edit(entry):view(entry),'manager-title-button'));
                 content.append(heading,node('p',info(entry)+' · '+visibility(entry),'manager-row-meta'));
                 if(section==='materials')content.append(node('p',research.folderName(entry.records[0]),'manager-row-meta'));
-                const tags=[...new Set(entry.records.flatMap(r=>r.tags||[]))].slice(0,5);if(tags.length)content.append(node('p',tags.join(' / '),'manager-row-tags'));
+                const tags=(entry.video?videoTags(entry.video):[...new Set(entry.records.flatMap(r=>r.tags||[]))]).slice(0,5);if(tags.length)content.append(node('p',tags.join(' / '),'manager-row-tags'));
                 content.append(node('p',(section==='trash'?'移動・更新 ':'更新 ')+date(Math.max(...entry.records.map(r=>Date.parse(r.updatedAt||r.date)||0))),'manager-row-date'));
                 const rowActions=node('div',undefined,'manager-row-actions');
                 if(section==='trash')rowActions.append(button('元に戻す',()=>change(entry.records,true,`「${entry.title}」`),'btn-outline lab-primary'));
