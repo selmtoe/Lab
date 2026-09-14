@@ -1,1 +1,1 @@
-window.LAB_VIDEOS = [{"title":"てすと [IWskrghK-gc]","date":"2026-09-14","tags":[],"content":"","youtubeId":"IWskrghK-gc","description":"","id":"analysis-994e2b719ed9e3ca10e5387b"}];
+window.LAB_VIDEOS = [{"title":"てすと [IWskrghK-gc]","date":"2026-09-14","tags":[],"content":"","youtubeId":"IWskrghK-gc","description":"","id":"analysis-994e2b719ed9e3ca10e5387b"},{"title":"てとぼ　3000↑　15先 [uRZnHoDG508]","date":"2026-09-15","tags":[],"content":"","youtubeId":"uRZnHoDG508","description":"","id":"analysis-49bd33542e41c6bf302e7b89"}];
