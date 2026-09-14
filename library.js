@@ -1,4 +1,4 @@
-import {youtubeId,timeText,encodeState,stateFromUrl,pageState,unpackLabelBoard,mountAppearanceControl} from './library-tools.js';
+import {youtubeId,timeText,encodeState,stateFromUrl,pageState,unpackLabelBoard,mountAppearanceControl} from './library-tools.js?v=20260914-analysis1';
 mountAppearanceControl();
 const $=id=>document.getElementById(id);
 const state={items:[],token:null,selected:null,trash:false,toolOrigin:'https://selmtoe.github.io',toolFrame:null,pending:null,batches:[],digest:null};
@@ -139,7 +139,7 @@ function openForm(record={}){
     $('edit').elements.tags.value=(record.tags||[]).join(', ');$('edit').elements.youtubeUrl.value=record.youtubeId?`https://www.youtube.com/watch?v=${record.youtubeId}`:'';$('delete').hidden=!record.id;$('form').showModal();
 }
 async function reload(){
-    const data=state.token?await api('/api/records'+(state.trash?'?trash=1':'')):await(await fetch('./data/library.json')).json();state.items=data.records||[];renderList();
+    const data=state.token?await api('/api/records'+(state.trash?'?trash=1':'')):await(await fetch('./data/library.json',{cache:'no-cache'})).json();state.items=data.records||[];renderList();
     const selected=location.hash.startsWith('#record/')?decodeURIComponent(location.hash.slice(8)):state.selected;
     if(selected&&state.items.some(r=>r.id===selected))select(selected);else $('detail').replaceChildren(el('p','一覧から資料を選択してください。','empty'));
 }

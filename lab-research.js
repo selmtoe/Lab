@@ -1,4 +1,4 @@
-import {timeText, pageState, stateFromUrl} from './library-tools.js';
+import {timeText, pageState, stateFromUrl} from './library-tools.js?v=20260914-analysis1';
 
 // The actual viewer owns rendering and its controls; Lab only links its page to video time.
 export function createVideoViewer({origin,onPage,onPractice,onPause}) {

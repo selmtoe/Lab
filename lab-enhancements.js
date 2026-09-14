@@ -1,5 +1,5 @@
-import {youtubeId,timeText,encodeState,stateFromUrl,pageState,playbackPosition,videoSettingsSave,videoSettingsFields,mountAppearanceControl} from './library-tools.js';
-import {createResearch,createVideoViewer} from './lab-research.js';
+import {youtubeId,timeText,encodeState,stateFromUrl,pageState,playbackPosition,videoSettingsSave,videoSettingsFields,mountAppearanceControl} from './library-tools.js?v=20260914-analysis1';
+import {createResearch,createVideoViewer} from './lab-research.js?v=20260914-analysis1';
 
 mountAppearanceControl();
 
@@ -37,10 +37,10 @@ function rebuildViews(){
     window.LAB_VIDEOS=state.videos=videos;
     document.getElementById('lab-analysis-nav').hidden=!!state.token||!videos.some(v=>v.labMatches.length);
 }
-async function refresh(preserveTime=false){const context=preserveTime?state.captureResearch?.():null,current=preserveTime?window.labVideoTime?.():NaN;const data=state.token?await api('/api/records'):await(await fetch('./data/library.json')).json();state.records=data.records||[];state.editorialArticles=null;state.replays.clear();rebuildViews();window.LabExtension.ready=true;window.dispatchEvent(new HashChangeEvent('hashchange'));if(!context&&Number.isFinite(current)&&location.hash.startsWith('#videos/'))window.seekDetailVideo(current,{pause:true});}
+async function refresh(preserveTime=false){const context=preserveTime?state.captureResearch?.():null,current=preserveTime?window.labVideoTime?.():NaN;const data=state.token?await api('/api/records'):await(await fetch('./data/library.json',{cache:'no-cache'})).json();state.records=data.records||[];state.editorialArticles=null;state.replays.clear();rebuildViews();window.LabExtension.ready=true;window.dispatchEvent(new HashChangeEvent('hashchange'));if(!context&&Number.isFinite(current)&&location.hash.startsWith('#videos/'))window.seekDetailVideo(current,{pause:true});}
 function openEdit(record={}){
     state.captureResearch?.();window.pauseDetailVideo?.();
-    if(!record._researchOnly&&!record._materialOnly&&(!record.kind||['article','video','tetofu'].includes(record.kind))){if(record.id)research.setTarget(record.id);return import('./vendor/lab-editor.js').then(m=>m.openArticle(record,{node,button,post,api,refresh,notice,state,research,recordId,field,setResearchTarget:research.setTarget,goToResearch:research.openRelated,goToArticles:()=>window.router(manager?'manage':'articles',manager?'articles':null),trashArticle:manager?(r,done)=>manager.change([r],false,`「${r.title}」`,done):undefined}));}
+    if(!record._researchOnly&&!record._materialOnly&&(!record.kind||['article','video','tetofu'].includes(record.kind))){if(record.id)research.setTarget(record.id);return import('./vendor/lab-editor.js?v=20260914-analysis1').then(m=>m.openArticle(record,{node,button,post,api,refresh,notice,state,research,recordId,field,setResearchTarget:research.setTarget,goToResearch:research.openRelated,goToArticles:()=>window.router(manager?'manage':'articles',manager?'articles':null),trashArticle:manager?(r,done)=>manager.change([r],false,`「${r.title}」`,done):undefined}));}
     const d=dialog(record.kind==='article'?'外部記事のリンクを編集':record.id?'編集する':'新しく追加する'),form=node('form');d.append(form);
     const title=field(form,'タイトル','title',record.title||'');title.required=true;title.maxLength=250;
     const kind=field(form,'種類','kind',record.kind||'article','text',[['article','記事'],['video','動画'],['tetofu','テト譜']]);
@@ -392,7 +392,7 @@ try{const response=['127.0.0.1','localhost'].includes(location.hostname)?await f
 // A running older server may not have the new static/API allowlist yet. Preserve
 // the established editing entry points until it is restarted; public pages do
 // not load any personal-workspace code or styles.
-if(state.token){try{await api('/api/drafts');const {createManager}=await import('./lab-manager.js');manager=createManager({state,node,button,dialog,api,post,refresh,notice,openEdit,openVideoSettings,editVideoArticle,openImports,openAnalysis,openPublication,research,recordId,videoKey});const style=node('link');style.rel='stylesheet';style.href='./lab-manager.css';document.head.append(style);}catch{notice('新しい編集室を使うには、資料庫のサーバーを起動し直してください。現在の編集機能は引き続き使えます。');}}
+if(state.token){try{await api('/api/drafts');const {createManager}=await import('./lab-manager.js?v=20260914-analysis1');manager=createManager({state,node,button,dialog,api,post,refresh,notice,openEdit,openVideoSettings,editVideoArticle,openImports,openAnalysis,openPublication,research,recordId,videoKey});const style=node('link');style.rel='stylesheet';style.href='./lab-manager.css?v=20260914-analysis1';document.head.append(style);}catch{notice('新しい編集室を使うには、資料庫のサーバーを起動し直してください。現在の編集機能は引き続き使えます。');}}
 if(state.token){document.body.classList.add('lab-editor-mode');
     if(manager){
     const nav=document.querySelector('.nav-links'),analysisNav=document.getElementById('lab-analysis-nav');nav.replaceChildren();nav.setAttribute('aria-label','編集室');
