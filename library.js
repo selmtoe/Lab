@@ -1,4 +1,4 @@
-import {youtubeId,timeText,encodeState,stateFromUrl,pageState,unpackLabelBoard,mountAppearanceControl} from './library-tools.js?v=20260914-analysis1';
+import {youtubeId,timeText,encodeState,stateFromUrl,pageState,unpackLabelBoard,mountAppearanceControl} from './library-tools.js?v=20260914-analysis2';
 mountAppearanceControl();
 const $=id=>document.getElementById(id);
 const state={items:[],token:null,selected:null,trash:false,toolOrigin:'https://selmtoe.github.io',toolFrame:null,pending:null,batches:[],digest:null};
