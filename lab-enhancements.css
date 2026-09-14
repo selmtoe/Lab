@@ -167,3 +167,9 @@ button.preview-ts-item{width:100%;padding:0;border:0;background:none;text-align:
 .lab-board-with-queues .lab-empty-hold{display:block;text-align:center;color:var(--text-muted)}
 .writer-shelf-card .lab-board-with-queues{display:block}
 @media(max-width:600px){.lab-board-with-queues{column-gap:6px}}
+
+.lab-match-tools{gap:8px;margin:0 0 10px;flex-wrap:wrap}
+.lab-match-tools[hidden]{display:none}
+.lab-copy-status{font-size:12px;color:var(--text-muted)}
+.lab-workbench>input[type=range]{width:100%;margin:8px 0}
+.lab-external-tools{flex-wrap:wrap}

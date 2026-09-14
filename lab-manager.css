@@ -22,6 +22,7 @@
 .lab-manager input[type=checkbox]{appearance:auto;accent-color:var(--accent-color);width:17px;height:17px;flex:none;cursor:pointer}
 .manager-list{background:var(--surface-color);border:1px solid var(--border-color);border-radius:10px;overflow:hidden}
 .manager-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:18px;padding:22px 20px;border-bottom:1px solid var(--border-color)}
+.manager-row-openable{cursor:pointer}
 .manager-row:last-child{border-bottom:0}.manager-row h2{margin:0;font-size:16px;font-weight:600;line-height:1.65;overflow-wrap:anywhere}
 .manager-title-button{font:inherit;color:var(--text-main);padding:0;text-align:left;border:0;background:none;cursor:pointer;overflow-wrap:anywhere}
 .manager-title-button:hover{color:var(--accent-color)}

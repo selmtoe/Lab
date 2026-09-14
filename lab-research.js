@@ -1,4 +1,4 @@
-import {timeText, pageState, stateFromUrl} from './library-tools.js?v=20260914-trash1';
+import {timeText, pageState, stateFromUrl} from './library-tools.js?v=20260914-reader1';
 
 // The actual viewer owns rendering and its controls; Lab only links its page to video time.
 export function createVideoViewer({origin,onPage,onPractice,onPause}) {
@@ -6,6 +6,7 @@ export function createVideoViewer({origin,onPage,onPractice,onPause}) {
     frame.title='P1・P2の連動ビューワー';frame.allow='clipboard-write';frame.inert=true;
     const status=document.createElement('p');status.className='lab-viewer-status';status.setAttribute('role','status');status.textContent='ビューワーを読み込み中…';
     const url=new URL('F/',origin.replace(/\/?$/,'/'));url.searchParams.set('labViewer','1');
+    url.searchParams.set('labVersion','20260914-reader1');
     const expectedOrigin=url.origin,abort=new AbortController();let ready=false,latest=null,sentKey=null,lastIndex=-1;
     const theme=()=>document.documentElement.dataset.labTheme==='dark'?'dark':'light';
     const send=(action,data)=>frame.contentWindow?.postMessage({type:'labViewerRequest',action,...data},expectedOrigin);
@@ -169,8 +170,7 @@ export function createResearch(ui) {
         const section=node('section',undefined,'lab-citations');section.append(node('h2','引用した局面'));
         record.citations.forEach((citation,index)=>{
             const item=node('article',undefined,'lab-research-card');item.append(node('h3',`${index+1}. ${citation.title}`));boardPreview(item,citation.snapshot,citation.sourceRef?.player);sourceLink(item,citation.sourceRef);
-            const actions=node('div',undefined,'lab-inline-actions');actions.append(button('この局面から試す',()=>openTool('sim',citation.snapshot,{title:citation.title,sourceRef:citation.sourceRef})),
-                button('テト譜で開く',()=>openTool('editor',citation.snapshot,{title:citation.title,sourceRef:citation.sourceRef})));
+            const actions=ui.externalTools(citation.snapshot,{title:citation.title,sourceRef:citation.sourceRef});
             item.append(actions);
             const marker=parent.querySelector(`[data-lab-citation="${index}"]`)||[...parent.querySelectorAll('p')].find(p=>p.textContent.trim()===`[[局面${index+1}]]`);
             if(marker){const inline=node('section',undefined,'lab-citations');inline.append(item);marker.replaceWith(inline);}else section.append(item);
@@ -195,7 +195,7 @@ export function createResearch(ui) {
             comparison.append(node('p','枠の付いた4マスが置き場所です。ラインが消える前の盤面で比較します。','lab-help-text'),boards);d.append(comparison);
         }
         const actions=node('div',undefined,'lab-inline-actions');
-        if(record.snapshot)actions.append(button('この局面から練習',()=>{d.close();openTool('sim',practiceState(record.snapshot),record);}),button('テト譜を編集',()=>{d.close();openTool('editor',record.snapshot,record);}));
+        if(record.snapshot){actions.append(ui.externalTools(record.snapshot,record));if(state.token)actions.append(button('テト譜を編集',()=>{d.close();openTool('editor',record.snapshot,record);}));}
         if(state.token)actions.append(button('記事に追加',()=>{d.close();return addToArticle('position',practiceState(record.snapshot),record);}),button('研究メモ・問題を編集',()=>{d.close();editResearch(record);}),ui.trashButton(record,()=>d.close()));
         actions.append(button('閉じる',()=>d.close()));d.append(actions);d.showModal();
     }

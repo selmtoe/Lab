@@ -14,8 +14,8 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script async src="https://www.youtube.com/iframe_api"></script>
-<link rel="stylesheet" href="lab-enhancements.css?v=20260914-trash1">
-<link rel="stylesheet" href="lab-writer.css?v=20260914-trash1">
+<link rel="stylesheet" href="lab-enhancements.css?v=20260914-reader1">
+<link rel="stylesheet" href="lab-writer.css?v=20260914-reader1">
 
 <style>
     :root {
@@ -387,6 +387,10 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
             }
             if (el.tagName === 'IFRAME') {
                 try { if (!['selmtoe.github.io','www.youtube.com','www.youtube-nocookie.com'].includes(new URL(el.src).hostname)) { el.remove(); continue; } } catch { el.remove(); continue; }
+                const embedded=new URL(el.src);
+                if(embedded.hostname==='selmtoe.github.io'&&embedded.pathname.startsWith('/Tetris_Simulator/')&&!embedded.pathname.startsWith('/Tetris_Simulator/F/')){
+                    const link=document.createElement('a');link.href=embedded.href;link.textContent='シミュレータ';link.className='btn-outline';link.target='_blank';link.rel='noopener';el.replaceWith(link);continue;
+                }
                 el.setAttribute('sandbox', 'allow-scripts allow-same-origin');
             }
         }
@@ -516,11 +520,12 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
         const card = document.createElement('div');
         card.className = 'card';
         
-        // 動画の場合はカードクリックで遷移させない（プレイヤー操作の邪魔になるため）
-        if(item.type !== '動画') {
-            card.onclick = item.externalUrl ?
-                () => window.open(item.externalUrl, '_blank') : item.action;
-        }
+        card.onclick = event => {
+            if(event.target.closest('a,button,input,select,textarea,iframe,.video-wrapper'))return;
+            if(window.getSelection()?.toString())return;
+            if(item.externalUrl)window.open(item.externalUrl,'_blank','noopener');
+            else item.action?.();
+        };
 
         // 動画用の一意なIDを生成
         const uniqueId = Math.random().toString(36).substr(2, 9);
@@ -584,7 +589,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
         const title=card.querySelector('.card-title'),target=document.createElement(item.type==='テト譜'?'button':'a');
         target.className='card-title-action';target.textContent=item.title;
         if(target.tagName==='A'){target.href=item.externalUrl||'#'+(item.type==='動画'?'videos':'articles')+'/'+encodeURIComponent(item.id);if(item.externalUrl){target.target='_blank';target.rel='noopener';}target.onclick=e=>e.stopPropagation();}
-        else{target.type='button';target.onclick=e=>{e.stopPropagation();card.onclick?.(e);};}title.append(target);
+        else{target.type='button';target.onclick=e=>{e.stopPropagation();card.onclick?.({target:card});};}title.append(target);
 
         // カード追加後にYouTubeプレイヤーを初期化
         if (item.type === '動画' && item.youtubeId && window.YT && window.YT.Player) {
@@ -927,6 +932,6 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
     observer.observe(document.getElementById('main-view'), { childList: true, subtree: true });
 
 </script>
-<script type="module" src="lab-enhancements.js?v=20260914-trash1"></script>
+<script type="module" src="lab-enhancements.js?v=20260914-reader1"></script>
 </body>
 </html>

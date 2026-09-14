@@ -152,6 +152,10 @@ export function createManager(ui){
             count.textContent=`${filtered.length}項目${section==='trash'?'（動画は試合ごとにまとまっています）':''}`;
             for(const entry of shown){
                 const row=node('article',undefined,'manager-row');row.dataset.managerId=entry.key;
+                if(section!=='trash'){
+                    row.classList.add('manager-row-openable');
+                    row.onclick=event=>{if(event.target.closest('a,button,input,select,textarea,label')||window.getSelection()?.toString())return;section==='articles'&&!entry.articleVideo?edit(entry):view(entry);};
+                }
                 const select=node('input');select.type='checkbox';select.dataset.key=entry.key;select.setAttribute('aria-label',entry.title+'を選択');select.onchange=()=>{select.checked?selection.add(entry.key):selection.delete(entry.key);sync();};
                 const content=node('div',undefined,'manager-row-content'),heading=node('h2');
                 if(section==='trash')heading.append(node('span',entry.title));else heading.append(button(entry.title,()=>section==='articles'&&!entry.articleVideo?edit(entry):view(entry),'manager-title-button'));
