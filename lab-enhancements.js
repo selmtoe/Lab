@@ -265,7 +265,7 @@ function externalTools(data,reference={}){
     actions.append(toolAnchor('シミュレータ',toolUrl('sim',research.practiceState(data),reference)),toolAnchor('ビューワー',toolUrl('editor',data,reference)));
     return actions;
 }
-// --- 直前の局面の1P/2Pテト譜リンクを開く（画像認識ボタンの代替） ---
+// --- その時刻の1P/2P局面をセットしたシミュレータを開く（画像認識ボタンの代替） ---
 function analysisSeconds(video){const time=window.labVideoTime?.();return Number.isFinite(time)?time-timeOffset(video):null;}
 function precedingMatchOf(video,seconds){
     const list=video?.labMatches||[];if(!list.length)return null;
@@ -273,12 +273,17 @@ function precedingMatchOf(video,seconds){
     let best=null;for(const match of list){if(match.startSeconds<=seconds+.5)best=match;else break;}
     return best||list[0];
 }
-window.labOpenPrecedingTetofu=()=>{
+function pageIndexAt(pages,relative){
+    let index=0;for(let i=0;i<pages.length;i++){if((pages[i].time||0)<=relative+.001)index=i;else break;}return index;
+}
+window.labOpenSimulatorAtTime=()=>{
     const video=window.labCurrentVideo?.();if(!video)return;
-    const seconds=analysisSeconds(video),match=precedingMatchOf(video,seconds),sim=match?.simulator||{};
-    const links=[sim.p1,sim.p2].filter(Boolean);
-    if(!links.length){window.alert('この時刻の直前にはテト譜データがありません。');return;}
-    for(const url of links)window.open(url,'_blank','noopener');
+    const seconds=analysisSeconds(video),match=precedingMatchOf(video,seconds);
+    if(!match){window.alert('この動画には解析した試合がありません。');return;}
+    const pages=replayPages(match);
+    if(!pages.length){window.alert('この試合にはシミュレータに渡せる局面がありません。');return;}
+    const index=seconds==null?0:pageIndexAt(pages,seconds-match.startSeconds),page=pages[index];
+    openTool('sim',pageState(page,'both'),{...match,startSeconds:match.startSeconds+(page.time||0),phase:index,player:'both',_matchStart:match.startSeconds});
 };
 function mountVideo(video){
     window.labCurrentVideo=()=>video;

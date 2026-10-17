@@ -655,7 +655,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
                         <button class="rate-btn" onclick="changeRate(0.5)">x0.5</button>
                         <button class="rate-btn active" onclick="changeRate(1.0)">x1.0</button>
                         <button class="rate-btn" onclick="changeRate(1.5)">x1.5</button>
-                        <button id="ppt-previous-tetofu" class="rate-btn" style="border-color: var(--accent-color); color: var(--accent-color); font-weight:bold;" onclick="window.labOpenPrecedingTetofu?.()">シミュレータを開く</button>
+                        <button id="ppt-simulator" class="rate-btn" style="border-color: var(--accent-color); color: var(--accent-color); font-weight:bold;" onclick="window.labOpenSimulatorAtTime?.()">シミュレータを開く</button>
                     </div>
       
                     <h1 class="article-title" style="font-size:24px;">${escapeHtml(v.title)}</h1>
@@ -858,6 +858,6 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
     });
 
 </script>
-<script type="module" src="lab-enhancements.js?v=20261018-tetofu1"></script>
+<script type="module" src="lab-enhancements.js?v=20261018-sim1"></script>
 </body>
 </html>
