@@ -265,7 +265,23 @@ function externalTools(data,reference={}){
     actions.append(toolAnchor('シミュレータ',toolUrl('sim',research.practiceState(data),reference)),toolAnchor('ビューワー',toolUrl('editor',data,reference)));
     return actions;
 }
+// --- 直前の局面の1P/2Pテト譜リンクを開く（画像認識ボタンの代替） ---
+function analysisSeconds(video){const time=window.labVideoTime?.();return Number.isFinite(time)?time-timeOffset(video):null;}
+function precedingMatchOf(video,seconds){
+    const list=video?.labMatches||[];if(!list.length)return null;
+    if(seconds==null)return list[0];
+    let best=null;for(const match of list){if(match.startSeconds<=seconds+.5)best=match;else break;}
+    return best||list[0];
+}
+window.labOpenPrecedingTetofu=()=>{
+    const video=window.labCurrentVideo?.();if(!video)return;
+    const seconds=analysisSeconds(video),match=precedingMatchOf(video,seconds),sim=match?.simulator||{};
+    const links=[sim.p1,sim.p2].filter(Boolean);
+    if(!links.length){window.alert('この時刻の直前にはテト譜データがありません。');return;}
+    for(const url of links)window.open(url,'_blank','noopener');
+};
 function mountVideo(video){
+    window.labCurrentVideo=()=>video;
     const left=document.querySelector('.video-sticky-area'),right=document.querySelector('.video-detail-container > .article-body');if(!left||!right)return;
     if(state.token)for(const back of document.querySelectorAll('#main-view > button[onclick]'))if(back.getAttribute('onclick')==="router('videos')")back.remove();
     let positionContext=()=>{const seconds=window.labVideoTime?.();return {seconds:Number.isFinite(seconds)?seconds:0,reference:{...videoRecord(video),startSeconds:Number.isFinite(seconds)?seconds:0,youtubeOffsetSeconds:0,player:'both'}};};
