@@ -1,4 +1,4 @@
-import {youtubeId,timeText,encodeState,stateFromUrl,pageState,playbackPosition,videoSettingsSave,videoSettingsFields,mountAppearanceControl,thumbnailSource,DEFAULT_THUMBNAIL} from './library-tools.js?v=20260915-covers1';
+import {youtubeId,timeText,encodeState,stateFromUrl,pageState,queueTimeline,playbackPosition,videoSettingsSave,videoSettingsFields,mountAppearanceControl,thumbnailSource,DEFAULT_THUMBNAIL} from './library-tools.js?v=20261018-queue1';
 import {createResearch,createVideoViewer} from './lab-research.js?v=20260915-covers1';
 import {createVideoLibrary,samePlayers,choices,normalize,matchTags,videoTags} from './lab-videos.js?v=20260915-covers1';
 
@@ -276,6 +276,30 @@ function precedingMatchOf(video,seconds){
 function pageIndexAt(pages,relative){
     let index=0;for(let i=0;i<pages.length;i++){if((pages[i].time||0)<=relative+.001)index=i;else break;}return index;
 }
+// 解析データが持つ「試合全体のネクスト列」を取り出し、ページごとの残りネクストを作る。
+// これでシミュレータのNEXT欄に、その局面から先のネクストが全部入る。
+function matchQueueTimeline(match){
+    const cached=state.queueTimelines?.get(match.id);if(cached)return cached;
+    let full={p1:'',p2:''};
+    try{
+        let raw=stateFromUrl(match.simulator?.combined||'');
+        if(window.TetrisEventCodec?.isEventReplay?.(raw)){
+            const entry=raw.cases?.[raw.currentCase||0]?.s;
+            const pick=slot=>{const value=entry?.[slot];return String(Array.isArray(value)?(value[value.length-1]||''):(value||''));};
+            full={p1:pick('1'),p2:pick('2')};
+        }
+    }catch{}
+    const pages=replayPages(match);
+    const result={p1:queueTimeline(pages,full.p1,'p1'),p2:queueTimeline(pages,full.p2,'p2')};
+    state.queueTimelines=state.queueTimelines||new Map();state.queueTimelines.set(match.id,result);
+    return result;
+}
+function queuesForPage(match,index,page){
+    try{
+        const timeline=matchQueueTimeline(match);
+        return {p1:timeline.p1[index]||page?.p1?.next||'',p2:timeline.p2[index]||page?.p2?.next||''};
+    }catch{return null;}
+}
 window.labOpenSimulatorAtTime=()=>{
     const video=window.labCurrentVideo?.();if(!video)return;
     const seconds=analysisSeconds(video),match=precedingMatchOf(video,seconds);
@@ -283,7 +307,7 @@ window.labOpenSimulatorAtTime=()=>{
     const pages=replayPages(match);
     if(!pages.length){window.alert('この試合にはシミュレータに渡せる局面がありません。');return;}
     const index=seconds==null?0:pageIndexAt(pages,seconds-match.startSeconds),page=pages[index];
-    openTool('sim',pageState(page,'both'),{...match,startSeconds:match.startSeconds+(page.time||0),phase:index,player:'both',_matchStart:match.startSeconds});
+    openTool('sim',pageState(page,'both',queuesForPage(match,index,page)),{...match,startSeconds:match.startSeconds+(page.time||0),phase:index,player:'both',_matchStart:match.startSeconds});
 };
 function mountVideo(video){
     window.labCurrentVideo=()=>video;
@@ -341,7 +365,7 @@ function mountVideo(video){
     if(details.children.length)right.prepend(details);
     if(!right.textContent.trim()&&!right.children.length)right.hidden=true;
     let selected=null,pages=[],lastPosition=-1,lastSeekAt=0,preferredPosition=null,covered=false,matchHash='';const rows=new Map();
-    const viewer=createVideoViewer({origin:state.token?state.toolOrigin:'https://selmtoe.github.io/Tetris_Simulator/',onPage:index=>{if(!covered)return;seekPosition(selected,index);},onPractice:()=>{if(covered&&pages[lastPosition])openTool('sim',pageState(pages[lastPosition],'both'),{...selected,startSeconds:selected.startSeconds+(pages[lastPosition].time||0),phase:lastPosition,player:'both',_matchStart:selected.startSeconds});},onPause:()=>window.pauseDetailVideo?.()});
+    const viewer=createVideoViewer({origin:state.token?state.toolOrigin:'https://selmtoe.github.io/Tetris_Simulator/',onPage:index=>{if(!covered)return;seekPosition(selected,index);},onPractice:()=>{if(covered&&pages[lastPosition])openTool('sim',pageState(pages[lastPosition],'both',queuesForPage(selected,lastPosition,pages[lastPosition])),{...selected,startSeconds:selected.startSeconds+(pages[lastPosition].time||0),phase:lastPosition,player:'both',_matchStart:selected.startSeconds});},onPause:()=>window.pauseDetailVideo?.()});
     const railObserver=new ResizeObserver(updateScrollButtons);railObserver.observe(list);
     if(viewer){boards.classList.add('lab-viewer-host');boards.append(viewer.frame,viewer.status);}
     state.disposeViewer=()=>{railObserver.disconnect();viewer?.destroy();};
@@ -360,7 +384,7 @@ function mountVideo(video){
     const showPosition=index=>{if(!selected||!pages.length)return;index=Math.max(0,Math.min(index,pages.length-1));if(index===lastPosition)return;lastPosition=index;slider.value=index;
         const page=pages[index],seconds=selected.startSeconds+(page.time||0);positionText.textContent=`局面 ${index+1} / ${pages.length} · 動画 ${timeText(seconds+timeOffset(video))}`;
         if(viewer)viewer.show(selected,pages,index);else{boards.replaceChildren();boards.append(boardElement(page.p1?.board,'P1',page.p1),boardElement(page.p2?.board,'P2',page.p2));}actions.replaceChildren();
-        const reference={...selected,startSeconds:seconds,phase:index,player:'both',_matchStart:selected.startSeconds};const data=pageState(page,'both');
+        const reference={...selected,startSeconds:seconds,phase:index,player:'both',_matchStart:selected.startSeconds};const data=pageState(page,'both',queuesForPage(selected,index,page));
         simLink.href=toolUrl('sim',data,reference);const replay=new URL('F/',state.token?state.toolOrigin+'/':publicToolBase);replay.hash=matchHash;replay.searchParams.set('page',String(index+1));viewerLink.href=replay.href;
         if(state.token){actions.append(button('記事に盤面を挿入',()=>research.addToArticle('position',data,reference)),button('局面をフォルダに保存',()=>research.capture(data,reference)));research.targetLabel(actions);}};
     const choose=match=>{if(selected?.id===match.id)return;selected=match;lastPosition=-1;boundaryNote.hidden=true;for(const[id,row]of rows){row.classList.toggle('active',id===match.id);row.querySelector('.lab-match-jump')?.setAttribute('aria-current',String(id===match.id));}revealMatch();

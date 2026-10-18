@@ -48,11 +48,48 @@ export function stateFromUrl(value) {
     if (!hash || hash.length>8*1024*1024) throw Error('このリンクには対応する盤面データがありません。');
     return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(decodeURIComponent(hash)),c=>c.charCodeAt(0))));
 }
-export function pageState(page, player='both') {
-    const convert = p => ({b:typeof p?.board==='string'?p.board:(p?.board||[]).flat().map(c=>c||'_').join('').padEnd(400,'_'),
-        n:((p?.active ?? p?.operation?.type ?? '') + (p?.next||'')).replace(/[^IOTLSJZ]/g,''),h:p?.hold||''});
-    if (player==='p2') return {v:2,m:'1P',p1:convert(page.p2)};
-    return {v:2,m:player==='p1'||!page.p2?'1P':'2P',p1:convert(page.p1),...(player==='both'&&page.p2?{p2:convert(page.p2)}:{})};
+export function pageState(page, player='both', queues=null) {
+    const convert = (p, slot) => {
+        const visible = String(p?.next||'');
+        // queues があれば「その試合のここから先のネクスト全部」を渡す（シミュレータのNEXT欄を埋める）
+        const ahead = queues && typeof queues[slot] === 'string' && queues[slot] ? queues[slot] : visible;
+        return {b:typeof p?.board==='string'?p.board:(p?.board||[]).flat().map(c=>c||'_').join('').padEnd(400,'_'),
+            n:((p?.active ?? p?.operation?.type ?? '') + ahead).replace(/[^IOTLSJZ]/g,''),h:p?.hold||''};
+    };
+    if (player==='p2') return {v:2,m:'1P',p1:convert(page.p2,'p2')};
+    return {v:2,m:player==='p1'||!page.p2?'1P':'2P',p1:convert(page.p1,'p1'),...(player==='both'&&page.p2?{p2:convert(page.p2,'p2')}:{})};
+}
+// 試合全体のネクスト列（full）と、その局面で見えている5個（visible）を突き合わせて、
+// ここから先のネクストを全部返す。offsetHint があればそこから前方検索する。
+export function remainingQueue(full, visible, offsetHint=0) {
+    const clean = value => String(value||'').toUpperCase().replace(/[^IOTLSJZ]/g,'');
+    const all = clean(full);const window = clean(visible);
+    if (!all) return window;
+    if (!window) return all;
+    const from = Math.max(0, Math.min(Number(offsetHint)||0, Math.max(0, all.length - 1)));
+    let at = all.indexOf(window, from);
+    if (at < 0) at = all.indexOf(window);
+    if (at >= 0) return all.slice(at);
+    // 見つからないときは末尾一致で探す（ホールド等で1手ずれた場合の保険）
+    for (let k = Math.min(window.length, all.length); k > 0; k -= 1) {
+        if (all.endsWith(window.slice(0, k))) return all.slice(all.length - k);
+    }
+    return window;
+}
+// ページ列の各局面について「ここから先のネクスト全部」を作る（位置は単調に進む前提で探す）
+export function queueTimeline(pages, full, slot='p1') {
+    const clean = value => String(value||'').toUpperCase().replace(/[^IOTLSJZ]/g,'');
+    const all = clean(full);
+    const out = [];let offset = 0;
+    for (const page of Array.isArray(pages) ? pages : []) {
+        const visible = clean(page?.[slot]?.next);
+        if (all && visible) {
+            const at = all.indexOf(visible, offset);
+            if (at >= 0) offset = at;
+        }
+        out.push(all ? all.slice(offset) : visible);
+    }
+    return out;
 }
 export function unpackLabelBoard(value) {
     if (!value) return '_'.repeat(400);

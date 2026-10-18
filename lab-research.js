@@ -1,4 +1,4 @@
-import {timeText, pageState, stateFromUrl} from './library-tools.js?v=20260915-covers1';
+import {timeText, pageState, stateFromUrl} from './library-tools.js?v=20261018-queue1';
 
 // The actual viewer owns rendering and its controls; Lab only links its page to video time.
 export function createVideoViewer({origin,onPage,onPractice,onPause}) {
@@ -200,7 +200,24 @@ export function createResearch(ui) {
         if(state.token)actions.append(button('記事に追加',()=>{d.close();return addToArticle('position',practiceState(record.snapshot),record);}),button('研究メモ・問題を編集',()=>{d.close();editResearch(record);}),ui.trashButton(record,()=>d.close()));
         actions.append(button('閉じる',()=>d.close()));d.append(actions);d.showModal();
     }
-    function practiceState(snapshot){const page=firstPage(snapshot);return snapshot.v===2?snapshot:pageState(page||{});}
+    // コレクション（イベント列）が持つ「試合全体のネクスト列」を取り出す。
+    // シミュレータを開くとき、この局面から先のネクストを全部渡すために使う。
+    function collectionQueues(snapshot){
+        try{
+            const entry=snapshot?.cases?.[snapshot.currentCase||0]?.s;if(!entry)return null;
+            const pick=slot=>{const value=entry[slot];return String(Array.isArray(value)?(value[value.length-1]||''):(value||''));};
+            const queues={p1:pick('1'),p2:pick('2')};
+            return queues.p1||queues.p2?queues:null;
+        }catch{return null;}
+    }
+    function practiceState(snapshot){
+        const page=firstPage(snapshot);
+        if(snapshot.v===2)return snapshot;
+        const queues=collectionQueues(snapshot);
+        // 先頭ページを取り出すので、残りネクスト＝試合の全キュー
+        return pageState(page||{},'both',queues&&{p1:plainQueue(queues.p1),p2:plainQueue(queues.p2)});
+    }
+    function plainQueue(value){return String(value||'').toUpperCase().replace(/[^IOTLSJZ]/g,'');}
     function renderWorkspace(id){
         const main=document.getElementById('main-view');main.replaceChildren(node('h2','研究ノート','section-title'));
         const sourceMatch=id&&byId(id)?.kind==='match'?byId(id):null;
