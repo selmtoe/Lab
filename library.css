@@ -7,7 +7,7 @@
 /* The small edge control shares the article site's saved appearance. */
 :root{--bg-color:#f4f7f9;--surface-color:#fff;--text-main:#172a35;--text-muted:#526975;--border-color:#d3dfe3;--accent-color:#087e73}
 :root[data-lab-theme="light"]{color-scheme:light}
-:root[data-lab-theme="dark"]{color-scheme:dark;--bg-color:#252527;--surface-color:#303032;--text-main:#dedee1;--text-muted:#aaaab1;--border-color:#48484b;--accent-color:#a0c7b7;--accent:var(--accent-color);--border:var(--border-color);background:var(--bg-color);color:var(--text-main)}
+:root[data-lab-theme="dark"]{color-scheme:dark;--bg-color:#252527;--surface-color:#303032;--text-main:#dedee1;--text-muted:#aaaab1;--border-color:#48484b;--accent-color:#ffffff;--accent:var(--accent-color);--border:var(--border-color);background:var(--bg-color);color:var(--text-main)}
 .lab-appearance-toggle{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:90;display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid var(--border-color);border-radius:50%;background:var(--surface-color);color:var(--text-muted);cursor:pointer;box-shadow:0 2px 8px #0000000a}
 .lab-appearance-toggle svg{width:18px;height:18px;pointer-events:none}
 .lab-appearance-toggle:hover{color:var(--text-main);border-color:var(--text-muted)}
@@ -16,9 +16,9 @@
 :root[data-lab-theme="dark"] :is(header,.entry,#detail,dialog,iframe.tool,.secondary){background:var(--surface-color);color:var(--text-main)}
 :root[data-lab-theme="dark"] :is(input,select,textarea){background:var(--bg-color);color:var(--text-main);border-color:var(--border)}
 :root[data-lab-theme="dark"] :is(header span,#counts,.meta,.empty){color:var(--text-muted)}
-:root[data-lab-theme="dark"] a{color:#a4c4d8}
-:root[data-lab-theme="dark"] button:not(.secondary,.entry,.lab-appearance-toggle){color:#25312d}
-:root[data-lab-theme="dark"] :is(.tag,.job){background:#3b4541;color:#cedcd7}
+:root[data-lab-theme="dark"] a{color:#e8e8ea}
+:root[data-lab-theme="dark"] button:not(.secondary,.entry,.lab-appearance-toggle){color:#252527}
+:root[data-lab-theme="dark"] :is(.tag,.job){background:#3a3a3d;color:#d6d6da}
 :root[data-lab-theme="dark"] .bookmark-form{background:#2b2b2d}
 :root[data-lab-theme="dark"] .bookmark{border-color:var(--border)}
 :root[data-lab-theme="dark"] .tag.failed{background:#4a3934;color:#e7a69f}

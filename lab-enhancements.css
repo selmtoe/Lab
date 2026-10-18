@@ -1,6 +1,6 @@
 /* Additions use the original LAB palette, cards, typography and pill tags. */
 :root[data-lab-theme="light"]{color-scheme:light}
-:root[data-lab-theme="dark"]{color-scheme:dark;--bg-color:#252527;--surface-color:#303032;--text-main:#dedee1;--text-muted:#aaaab1;--border-color:#48484b;--accent-color:#a0c7b7;--link-color:#a4c4d8}
+:root[data-lab-theme="dark"]{color-scheme:dark;--bg-color:#252527;--surface-color:#303032;--text-main:#dedee1;--text-muted:#aaaab1;--border-color:#48484b;--accent-color:#ffffff;--link-color:#e8e8ea}
 .lab-appearance-toggle{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:90;display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid var(--border-color);border-radius:50%;background:var(--surface-color);color:var(--text-muted);cursor:pointer;box-shadow:0 2px 8px #0000000a}
 .lab-appearance-toggle svg{width:18px;height:18px;pointer-events:none}
 .lab-appearance-toggle:hover{color:var(--text-main);border-color:var(--text-muted)}
@@ -11,12 +11,12 @@
 :root[data-lab-theme="dark"] .lab-dialog :is(input:not([type=checkbox]),select,textarea){background:var(--bg-color);color:var(--text-main);border-color:var(--border-color)}
 :root[data-lab-theme="dark"] .search-input:focus{background:var(--surface-color)}
 :root[data-lab-theme="dark"] .tag{background:#3a3a3d;color:var(--text-muted)}
-:root[data-lab-theme="dark"] :is(.tag:hover,.tag.active,.ts-link:hover,.lab-dialog .lab-primary){background:var(--accent-color);color:#25312d}
+:root[data-lab-theme="dark"] :is(.tag:hover,.tag.active,.ts-link:hover,.lab-dialog .lab-primary){background:var(--accent-color);color:#252527}
 :root[data-lab-theme="dark"] .preview-ts-list{background:#2b2b2d}
 :root[data-lab-theme="dark"] :is(.rate-btn:hover,.rate-btn.active){color:#252527}
 :root[data-lab-theme="dark"] .btn-outline:hover{background:#3a3a3d;border-color:#77777d}
-:root[data-lab-theme="dark"] .lab-score-widget{background:#323637;border-color:#525c59}
-:root[data-lab-theme="dark"] .lab-score-widget .lab-score-status{color:#b9cbc2}
+:root[data-lab-theme="dark"] .lab-score-widget{background:#313133;border-color:#4a4a4d}
+:root[data-lab-theme="dark"] .lab-score-widget .lab-score-status{color:#c7c7cc}
 :root[data-lab-theme="dark"] .lab-boundary-note{background:#3e3931;border-color:#8d7b5b;color:#d6c6a6}
 :root[data-lab-theme="dark"] :is(.lab-failed,.lab-form-error){color:#e7a69f!important}
 :root[data-lab-theme="dark"] :is(a,button,input,select,textarea,summary):focus-visible{outline-color:var(--accent-color)}
