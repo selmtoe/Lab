@@ -27,11 +27,23 @@ export function videoIndex(videos) {
 }
 export function filterVideoIndex(index, filters = {}) {
     const words = normalize(filters.query).split(' ').filter(Boolean), tag = normalize(filters.tag);
+    const player = normalize(filters.player);
+    // 勝敗フィルタ: プレイヤーが指定されているときだけ「その人が勝った/負けた」で絞る
+    const resultOk = match => {
+        const want = filters.result;
+        if (!want || !player) return true;
+        if (want === 'review') return !match.winner || match.winnerStatus !== 'ok';
+        const names = (match.players || []).map(normalize);
+        const side = names.findIndex(name => name === player);
+        if (side < 0) return true;
+        const won = match.winner === (side === 0 ? 'p1' : 'p2');
+        return want === 'win' ? won : !won;
+    };
     return index.flatMap(entry => {
         if (filters.analysis === 'yes' && !entry.matches.length || filters.analysis === 'no' && entry.matches.length) return [];
         const matches = entry.matches.filter(row => samePlayers(row.match.players, filters.player, filters.opponent)
-            && (!tag || row.tags.has(tag)) && words.every(word => row.text.includes(word)));
-        const standalone = !entry.matches.length && !filters.player && !filters.opponent
+            && resultOk(row.match) && (!tag || row.tags.has(tag)) && words.every(word => row.text.includes(word)));
+        const standalone = !entry.matches.length && !filters.player && !filters.opponent && !filters.result
             && (!tag || entry.tags.has(tag)) && words.every(word => entry.text.includes(word));
         return matches.length || standalone ? [{...entry, matches}] : [];
     });
@@ -74,6 +86,7 @@ export function createVideoLibrary({state, node, button, openMatch}) {
         const tagChoices = choices(state.videos.flatMap(v => [...(v.tags || []), ...(v.labMatches || []).flatMap(m => m.tags || [])]))
             .filter(([value]) => normalize(value) !== normalize('動画解析') && !playerKeys.has(normalize(value)));
         select('タグ', 'tag', [['','すべて'], ...tagChoices]);
+        select('勝敗', 'result', [['','すべて'], ['win','勝ち'], ['lost','負け'], ['review','未確定']]);
         select('並び順', 'sort', [['newest','新しい順'], ['oldest','古い順'], ['title','タイトル順']]);
         const clear = button('絞り込みを解除', () => {
             for (const [key, input] of inputs) input.value = filters[key] = key === 'sort' ? 'newest' : '';
