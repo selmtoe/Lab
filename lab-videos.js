@@ -91,7 +91,7 @@ export function createVideoLibrary({state, node, button, openMatch}) {
         const clear = button('絞り込みを解除', () => {
             for (const [key, input] of inputs) input.value = filters[key] = key === 'sort' ? 'newest' : '';
             page = 0;draw();
-        });        const playlist = button('特集再生', () => startPlaylist());
+        });        const playlist = button('特集再生', () => startPlaylist({index, filters, openMatch}));
         controls.append(clear, playlist);root.append(controls);
         const count = node('p', undefined, 'lab-video-count');count.setAttribute('aria-live', 'polite');
         const list = node('div', undefined, 'list-container'), pager = node('nav', undefined, 'lab-video-pagination');pager.setAttribute('aria-label', '一覧のページ');
@@ -155,9 +155,10 @@ export function createVideoLibrary({state, node, button, openMatch}) {
 }
 
 // ---- 特集再生: 絞り込み結果の試合を順に再生する ----
-let playlistState = null, playlistTimer = 0;
+let playlistState = null, playlistTimer = 0, playlistCtx = null;
 function currentRows() {
-    const filtered = filterVideoIndex(index, filters);
+    if (!playlistCtx) return [];
+    const filtered = filterVideoIndex(playlistCtx.index, playlistCtx.filters);
     const rows = [];
     for (const entry of filtered) {
         for (const row of entry.matches) rows.push({ video: entry.video, match: row.match });
@@ -192,7 +193,7 @@ function savePlaylist() {
     try {
         if (!playlistState) { sessionStorage.removeItem('lab-playlist'); return; }
         sessionStorage.setItem('lab-playlist', JSON.stringify({
-            index: playlistState.index, auto: playlistState.auto, filters,
+            index: playlistState.index, auto: playlistState.auto, filters: playlistCtx?.filters,
             items: playlistState.items.map(item => ({videoId: item.video.id, matchId: item.match.id}))
         }));
     } catch (_) {}
@@ -207,7 +208,7 @@ function playStep(delta) {
     savePlaylist();
     preloadItem(playlistState.items[next + 1]);
     const item = playlistState.items[next];
-    openMatch(item.video, item.match);
+    playlistCtx?.openMatch(item.video, item.match);
     renderPlaylistBar();
 }
 function renderPlaylistBar() {
@@ -252,7 +253,8 @@ export function stopPlaylist() {
     clearTimeout(playlistTimer);
     document.getElementById('lab-playlist-bar')?.remove();
 }
-export function startPlaylist() {
+export function startPlaylist(ctx) {
+    if (ctx) playlistCtx = ctx;
     const rows = currentRows();
     if (!rows.length) return;
     playlistState = { items: rows, index: 0, auto: true };
