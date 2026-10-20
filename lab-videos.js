@@ -266,28 +266,8 @@ export function featureRecord(index, filters = {}, {now = new Date()} = {}) {
         sources.set(row.video.id, source);
     }
     const picks = [filters.player, filters.opponent].map(value => String(value || '').trim()).filter(Boolean);
-    const tally = {win: 0, lose: 0, review: 0};
-    const self = String(filters.player || '').trim();
-    for (const row of rows) {
-        const match = row.match;
-        if (!self) break;
-        if (!match.winner || match.winnerStatus !== 'ok') { tally.review += 1; continue; }
-        const side = (match.players || []).map(normalize).indexOf(normalize(self));
-        if (side < 0) continue;
-        if (match.winner === (side === 0 ? 'p1' : 'p2')) tally.win += 1; else tally.lose += 1;
-    }
     const tags = [filters.tag, ...picks, '特集'].map(value => String(value || '').trim()).filter(Boolean);
     const title = featureTitle(filters, rows.length, range);
-    const summary = ['- 対象: ' + rows.length + '試合', '- 出典: ' + sources.size + '本の動画'];
-    if (range) summary.push('- 期間: ' + range.from + (range.to && range.to !== range.from ? ' — ' + range.to : ''));
-    if (self) summary.push('- 戦績: ' + tally.win + '勝 ' + tally.lose + '敗' + (tally.review ? '（未確定 ' + tally.review + '）' : ''));
-    const content = [
-        'この特集は動画研究の絞り込み結果を、古い順に1本の動画として続けて再生します。',
-        '',
-        ...summary,
-        '',
-        '条件を変えるときは「動画研究」の絞り込みから開き直してください。'
-    ].join('\n');
     return {
         id: featureId(filters),
         labFeature: true,
@@ -297,7 +277,7 @@ export function featureRecord(index, filters = {}, {now = new Date()} = {}) {
         players: picks,
         tags,
         labOwnTags: tags,
-        content,
+        content: '',
         description: rows.length + '試合 · ' + sources.size + '本の動画' + (range ? ' · ' + range.from + ' — ' + range.to : ''),
         youtubeId: '',
         labMatches: rows.map(row => row.match),

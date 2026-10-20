@@ -1,6 +1,6 @@
 import {youtubeId,timeText,encodeState,stateFromUrl,pageState,queueTimeline,playbackPosition,videoSettingsSave,videoSettingsFields,mountAppearanceControl,thumbnailSource,DEFAULT_THUMBNAIL} from './library-tools.js?v=20261018-queue1';
 import {createResearch,createVideoViewer} from './lab-research.js?v=20260915-covers1';
-import {createVideoLibrary,samePlayers,choices,normalize,matchTags,videoTags,videoIndex,featureRecord,featureFiltersFromId,sourceBadge,preloadVideo,dropPreload,clearPreloads} from './lab-videos.js?v=20261020-feature1';
+import {createVideoLibrary,samePlayers,choices,normalize,matchTags,videoTags,videoIndex,featureRecord,featureFiltersFromId,sourceBadge,preloadVideo,dropPreload,clearPreloads} from './lab-videos.js?v=20261020-feature3';
 
 mountAppearanceControl();
 
@@ -239,12 +239,14 @@ function replayPages(match){
     const pages=replay.cases?.[replay.currentCase||0]?.pages||[];state.replays.set(match.id,pages);return pages;
 }
 function timeOffset(video){return video.youtubeId?Number(video.youtubeOffsetSeconds)||0:0;}
-function mountPlayback(video,left){
+function mountPlayback(video,left,options={}){
     const wrapper=left.querySelector('.video-wrapper'),status=node('p',undefined,'lab-playback-status');
     status.setAttribute('role','status');wrapper.after(status);
-    if(!video.youtubeId){status.textContent=state.token?'動画・解析結果を編集からYouTubeのリンクを設定してください。':'YouTubeのリンクはまだ登録されていません。';return;}
+    const source=options.source||video;
+    if(!source.youtubeId){status.textContent=state.token?'動画・解析結果を編集からYouTubeのリンクを設定してください。':'YouTubeのリンクはまだ登録されていません。';return;}
     const target=node('div');target.id='yt-player-detail';wrapper.replaceChildren(target);
-    window.startDetailYouTube(video.youtubeId,{title:video.title,initialTime:state.token&&state.researchPositions.get(video.id)?.seconds||(video.labMatches[0]?.startSeconds||0)+timeOffset(video),
+    const initialTime=Number.isFinite(options.initialSeconds)?options.initialSeconds:(state.token&&state.researchPositions.get(video.id)?.seconds||(video.labMatches[0]?.startSeconds||0)+timeOffset(video));
+    window.startDetailYouTube(source.youtubeId,{title:source.title||video.title,initialTime,
         onReady:()=>{status.textContent='';status.classList.remove('lab-form-error');state.onVideoReady?.();},
         onStateChange:value=>state.onVideoState?.(value),
         onError:code=>{status.classList.toggle('lab-form-error',code!=='timeout');status.textContent=code==='timeout'?'YouTubeとの接続を確認できません。動画が表示されない場合はページを再読み込みするか、「YouTubeで開く」を使ってください。':[101,150].includes(code)?'この動画はYouTube側で埋め込み再生が許可されていません。':code===100?'動画が削除されたか、非公開になっています。':`YouTubeを読み込めませんでした（${code}）。ページを再読み込みしてください。`;}});
@@ -268,7 +270,7 @@ function externalTools(data,reference={}){
     return actions;
 }
 // --- その時刻の1P/2P局面をセットしたシミュレータを開く（画像認識ボタンの代替） ---
-function analysisSeconds(video){const time=window.labVideoTime?.();return Number.isFinite(time)?time-timeOffset(video):null;}
+function analysisSeconds(video){const time=window.labVideoTime?.();if(!Number.isFinite(time))return null;const offset=Number(window.labVideoOffset?.());return time-(Number.isFinite(offset)?offset:timeOffset(video));}
 function precedingMatchOf(video,seconds){
     const list=video?.labMatches||[];if(!list.length)return null;
     if(seconds==null)return list[0];
@@ -304,7 +306,9 @@ function queuesForPage(match,index,page){
 }
 window.labOpenSimulatorAtTime=()=>{
     const video=window.labCurrentVideo?.();if(!video)return;
-    const seconds=analysisSeconds(video),match=precedingMatchOf(video,seconds);
+    const seconds=analysisSeconds(video);
+    // 特集は動画をまたぐので、時刻ではなく選択中の試合を使う
+    const match=video.labFeature?(window.labSelectedMatch?.()||precedingMatchOf(video,seconds)):precedingMatchOf(video,seconds);
     if(!match){window.alert('この動画には解析した試合がありません。');return;}
     const pages=replayPages(match);
     if(!pages.length){window.alert('この試合にはシミュレータに渡せる局面がありません。');return;}
@@ -337,18 +341,40 @@ function playerNames(match){
 function mountVideo(video){
     window.labCurrentVideo=()=>video;
     const left=document.querySelector('.video-sticky-area'),right=document.querySelector('.video-detail-container > .article-body');if(!left||!right)return;
-    if(state.token)for(const back of document.querySelectorAll('#main-view > button[onclick]'))if(back.getAttribute('onclick')==="router('videos')")back.remove();
+    // 特集は1つのレコードに複数のYouTube動画がぶら下がる。試合ごとの出典を引けるようにする。
+    const isFeature=!!video.labFeature;
+    const featureRows=isFeature?video.labFeatureRows||[]:[];
+    const featureRowByMatch=new Map(featureRows.map(row=>[row.match.id,row]));
+    const sourceOf=match=>{
+        const row=match?featureRowByMatch.get(match.id):null;
+        return row?{key:row.video.id,youtubeId:row.video.youtubeId||'',offset:Number(row.offset)||0,title:row.video.title||video.title,date:row.video.date,ordinal:row.sourceOrdinal}
+            :{key:video.id,youtubeId:video.youtubeId||'',offset:timeOffset(video),title:video.title,date:video.date,ordinal:0};
+    };
+    const sourceMatches=new Map();
+    const matchesFor=source=>{
+        if(!isFeature)return video.labMatches;
+        if(!sourceMatches.has(source.key))sourceMatches.set(source.key,featureRows.filter(row=>row.video.id===source.key).map(row=>row.match));
+        return sourceMatches.get(source.key);
+    };
+    let featureAuto=true,featureStart=0,selected=null,autoButton=null,refreshSourceLink=()=>{},mountedSource=null,pendingSeek=null;
+    if(isFeature){try{const saved=JSON.parse(sessionStorage.getItem('lab-feature-'+video.id)||'null');if(saved&&Number.isInteger(saved.index)&&video.labMatches[saved.index]){featureStart=saved.index;featureAuto=saved.auto!==false;}}catch{}}
+    const saveFeature=()=>{if(!isFeature||!selected)return;try{sessionStorage.setItem('lab-feature-'+video.id,JSON.stringify({index:video.labMatches.findIndex(match=>match.id===selected.id),auto:featureAuto}));}catch{}};
+    window.labSelectedMatch=()=>selected;
+    window.labVideoOffset=()=>selected?sourceOf(selected).offset:timeOffset(video);
+    if(state.token&&!isFeature)for(const back of document.querySelectorAll('#main-view > button[onclick]'))if(back.getAttribute('onclick')==="router('videos')")back.remove();
     let positionContext=()=>{const seconds=window.labVideoTime?.();return {seconds:Number.isFinite(seconds)?seconds:0,reference:{...videoRecord(video),startSeconds:Number.isFinite(seconds)?seconds:0,youtubeOffsetSeconds:0,player:'both'}};};
-    state.currentResearchReference=()=>positionContext().reference;
-    if(state.token){const controls=node('div',undefined,'lab-inline-actions');controls.append(button('研究メモを残す',()=>openBookmark(video)),button('解析結果を追加',openImports));
+    if(!isFeature)state.currentResearchReference=()=>positionContext().reference;
+    if(state.token&&!isFeature){const controls=node('div',undefined,'lab-inline-actions');controls.append(button('研究メモを残す',()=>openBookmark(video)),button('解析結果を追加',openImports));
         const settings=node('details',undefined,'lab-research-options'),summary=node('summary','動画・解析の設定');settings.append(summary,button('動画と時刻の対応を設定',()=>openVideoSettings(video)),button('PCの解析ツールを開く',openAnalysis));controls.append(settings);
         controls.append(button('この記事を編集',()=>editVideoArticle(video)),button('この記事を公開',()=>publishVideoArticle(video),'btn-outline lab-primary'));left.append(controls);research.articleControls(left,()=>positionContext());}
-    if(video.youtubeId){const links=node('div',undefined,'lab-source-link'),a=node('a','YouTubeで開く','btn-outline');a.href='https://www.youtube.com/watch?v='+video.youtubeId;a.target='_blank';a.rel='noopener';links.append(a);left.append(links);}
-    const marks=[];for(const mark of videoRecord(video).bookmarks||[])marks.push({...mark,displaySeconds:mark.seconds});
-    for(const match of video.labMatches)for(const mark of match.bookmarks||[])marks.push({...mark,displaySeconds:mark.seconds+timeOffset(video)});
+    if(video.youtubeId||isFeature){const links=node('div',undefined,'lab-source-link'),a=node('a','YouTubeで開く','btn-outline');a.target='_blank';a.rel='noopener';
+        refreshSourceLink=()=>{const source=sourceOf(selected||video.labMatches[0]);if(source.youtubeId){a.href='https://www.youtube.com/watch?v='+source.youtubeId;a.hidden=false;}else{a.removeAttribute('href');a.hidden=true;}};
+        refreshSourceLink();links.append(a);left.append(links);}
+    const marks=[];for(const mark of videoRecord(video).bookmarks||[])marks.push({...mark,displaySeconds:mark.seconds,source:sourceOf(null)});
+    for(const match of video.labMatches)for(const mark of match.bookmarks||[])marks.push({...mark,displaySeconds:mark.seconds+sourceOf(match).offset,source:sourceOf(match)});
     if(marks.length){const section=node('section',undefined,'lab-analysis-panel');section.append(node('h2','追加したメモ'));
-        for(const mark of marks.sort((a,b)=>a.displaySeconds-b.displaySeconds)){const row=node('div',undefined,'lab-bookmark');row.append(button('▶ '+timeText(mark.displaySeconds),()=>window.seekDetailVideo(mark.displaySeconds),'ts-link'));if(mark.label)row.append(node('strong',mark.label));row.append(node('p',mark.note));if(state.token&&mark.visibility==='private')row.append(node('small','研究メモ · 非公開','lab-help-text'));tags(row,mark.tags);section.append(row);}right.append(section);}
-    research.renderCitations(videoRecord(video));
+        for(const mark of marks.sort((a,b)=>a.displaySeconds-b.displaySeconds)){const row=node('div',undefined,'lab-bookmark');row.append(button('▶ '+timeText(mark.displaySeconds),()=>isFeature?ensureSource(mark.source,mark.displaySeconds,{pause:true}):window.seekDetailVideo(mark.displaySeconds),'ts-link'));if(mark.label)row.append(node('strong',mark.label));row.append(node('p',mark.note));if(state.token&&mark.visibility==='private')row.append(node('small','研究メモ · 非公開','lab-help-text'));tags(row,mark.tags);section.append(row);}right.append(section);}
+    if(!isFeature)research.renderCitations(videoRecord(video));
     if(!video.labMatches.length||!state.token&&video.publicPlayback?.enabled===false){
         if(state.token){state.captureResearch=()=>{const value={videoId:video.id,seconds:positionContext().seconds};state.researchPositions.set(video.id,value);return value;};const previous=state.researchPositions.get(video.id);if(previous)state.onVideoReady=()=>{state.onVideoReady=null;window.seekDetailVideo(previous.seconds,{pause:true});};}
         mountPlayback(video,left);return;
@@ -363,7 +389,7 @@ function mountVideo(video){
     const earlier=button('‹',()=>scrollMatches(-1),'btn-outline lab-match-scroll'),later=button('›',()=>scrollMatches(1),'btn-outline lab-match-scroll');earlier.setAttribute('aria-label','前の試合一覧');later.setAttribute('aria-label','次の試合一覧');
     const updateScrollButtons=()=>{earlier.disabled=list.scrollLeft<=1;later.disabled=list.scrollLeft+list.clientWidth>=list.scrollWidth-1;};
     rail.append(earlier,list,later);section.append(rail);left.append(section);list.addEventListener('scroll',updateScrollButtons,{passive:true});
-    if(state.token){const scoring=node('details',undefined,'lab-research-options');scoring.append(node('summary','動画全体のAI分析'),scoreWidget(video.labMatches,'この動画をまとめてAI採点'),button('AI採点の設定',scoringSettings));right.append(scoring);}
+    if(state.token&&!isFeature){const scoring=node('details',undefined,'lab-research-options');scoring.append(node('summary','動画全体のAI分析'),scoreWidget(video.labMatches,'この動画をまとめてAI採点'),button('AI採点の設定',scoringSettings));right.append(scoring);}
     const work=node('section',undefined,'lab-workbench'),title=node('h3','解析した試合を選択してください'),positionText=node('p',undefined,'lab-position');
     const boundaryNote=node('p','この時刻の認識結果はありません。試合・局面を選ぶと、その時刻へ移動できます。','lab-boundary-note');boundaryNote.hidden=true;boundaryNote.setAttribute('role','status');
     const followLabel=node('label',undefined,'lab-follow'),follow=node('input');follow.type='checkbox';follow.checked=true;followLabel.append(follow,'動画に局面を合わせる');
@@ -378,10 +404,22 @@ function mountVideo(video){
     work.append(tools,boundaryNote,boards,playhead,fixedNote,slider,navigation,actions,matchActions);
     const comparison=node('section',undefined,'lab-comparison');comparison.setAttribute('aria-label','動画と認識盤面の比較');
     left.parentElement.classList.add('lab-analyzed-video');left.before(comparison);comparison.append(left,work);
-    const heading=node('div',undefined,'lab-video-heading'),identity=node('div',undefined,'lab-video-identity'),metadata=node('div',undefined,'lab-video-meta'),headingActions=node('div',undefined,'lab-video-heading-actions');
-    const streamTitle=left.querySelector(':scope > .article-title');if(streamTitle)identity.append(streamTitle);
+    const heading=node('div',undefined,'lab-video-heading'+(isFeature?' lab-feature-heading':'')),identity=node('div',undefined,'lab-video-identity'),metadata=node('div',undefined,'lab-video-meta'),headingActions=node('div',undefined,'lab-video-heading-actions');
+    const streamTitle=left.querySelector(':scope > .article-title');
+    if(streamTitle){
+        if(isFeature){
+            // 末尾の [2026-09-14 - 2026-10-19] は途中で折り返さない
+            const text=streamTitle.textContent||'',range=text.match(/\[[^\]]+\]$/);
+            if(range)streamTitle.replaceChildren(document.createTextNode(text.slice(0,range.index)),node('span',range[0],'lab-feature-range'));
+        }
+        identity.append(streamTitle);
+    }
     for(const child of left.querySelectorAll(':scope > .lab-video-date,:scope > .lab-video-tags'))metadata.append(child);
     identity.append(metadata);heading.append(identity,headingActions);
+    if(isFeature){const controls=node('div',undefined,'lab-feature-controls');
+        autoButton=node('button',featureAuto?'自動送り:入':'自動送り:切','btn-outline');autoButton.type='button';autoButton.onclick=()=>toggleFeatureAuto();
+        controls.append(button('前の試合',()=>stepFeature(-1)),button('次の試合',()=>stepFeature(1)),autoButton);
+        headingActions.append(controls);}
     const back=document.querySelector('#main-view > button[onclick]');if(back&&back.getAttribute('onclick')==="router('videos')"){back.style.marginBottom='0';headingActions.append(back);}
     const sourceLink=left.querySelector(':scope > .lab-source-link');if(sourceLink)headingActions.append(sourceLink);
     comparison.parentElement.before(heading);
@@ -389,63 +427,127 @@ function mountVideo(video){
     for(const child of [...left.children])if(!child.matches('.video-wrapper,.video-controls,.lab-playback-status,.lab-match-timeline'))details.append(child);
     if(details.children.length)right.prepend(details);
     if(!right.textContent.trim()&&!right.children.length)right.hidden=true;
-    let selected=null,pages=[],lastPosition=-1,lastSeekAt=0,preferredPosition=null,covered=false,matchHash='';const rows=new Map();
+    let pages=[],lastPosition=-1,lastSeekAt=0,preferredPosition=null,covered=false,matchHash='';const rows=new Map();
     const viewer=createVideoViewer({origin:state.token?state.toolOrigin:'https://selmtoe.github.io/Tetris_Simulator/',onPage:index=>{if(!covered)return;seekPosition(selected,index);},onPractice:()=>{if(covered&&pages[lastPosition])openTool('sim',pageState(pages[lastPosition],'both',queuesForPage(selected,lastPosition,pages[lastPosition])),{...selected,startSeconds:selected.startSeconds+(pages[lastPosition].time||0),phase:lastPosition,player:'both',_matchStart:selected.startSeconds});},onPause:()=>window.pauseDetailVideo?.()});
     const railObserver=new ResizeObserver(updateScrollButtons);railObserver.observe(list);
     if(viewer){boards.classList.add('lab-viewer-host');boards.append(viewer.frame,viewer.status);}
     state.disposeViewer=()=>{railObserver.disconnect();viewer?.destroy();};
-    const remember=()=>{if(!state.token)return null;const time=window.labVideoTime?.(),value={videoId:video.id,seconds:Number.isFinite(time)?time:selected?selected.startSeconds+(pages[lastPosition]?.time||0)+timeOffset(video):0,recordId:selected?.id,index:lastPosition,player:'both',follow:follow.checked,covered};state.researchPositions.set(video.id,value);return value;};
+    if(isFeature)state.disposeFeature=clearPreloads;
+    const remember=()=>{if(!state.token)return null;const time=window.labVideoTime?.(),source=sourceOf(selected),value={videoId:video.id,seconds:Number.isFinite(time)?time:selected?selected.startSeconds+(pages[lastPosition]?.time||0)+(source?.offset||0):0,recordId:selected?.id,index:lastPosition,player:'both',follow:follow.checked,covered};state.researchPositions.set(video.id,value);return value;};
     const setCoverage=value=>{if(value&&!covered)lastPosition=-1;covered=!!value;boundaryNote.hidden=covered;boards.hidden=!covered;tools.hidden=!covered;actions.hidden=!covered;slider.disabled=!covered;for(const step of steps.querySelectorAll('button'))step.disabled=!covered;work.dataset.coverage=covered?'ready':'unavailable';if(!covered)positionText.textContent='この時刻には連動する盤面がありません';};
     const revealMatch=()=>{const row=rows.get(selected?.id);if(!row)return;const item=row.getBoundingClientRect(),viewport=list.getBoundingClientRect();if(item.left<viewport.left)list.scrollBy({left:item.left-viewport.left});else if(item.right>viewport.right)list.scrollBy({left:item.right-viewport.right});};
     const renderList=()=>{list.replaceChildren();rows.clear();const words=normalize(filter.value).split(' ').filter(Boolean);
         for(const [index,match]of video.labMatches.entries()){
             if(!samePlayers(match.players,playerSelects[0].value,playerSelects[1].value))continue;
-            const text=normalize(JSON.stringify([match.title,match.players,match.tags,match.bookmarks]));if(!words.every(word=>text.includes(word)))continue;
+            const source=sourceOf(match),text=normalize(JSON.stringify([match.title,match.players,match.tags,match.bookmarks,isFeature?source.title:'',isFeature?source.date:'']));if(!words.every(word=>text.includes(word)))continue;
             const row=node('div',undefined,'lab-match-row'+(selected?.id===match.id?' active':''));rows.set(match.id,row);
-            const jump=button('',()=>seekPosition(match,0),'lab-match-jump'),label=node('span',undefined,'lab-match-label');label.append(node('strong',`試合 ${match.analysis?.index||index+1}`),node('span','▶ '+timeText(match.startSeconds+timeOffset(video)),'ts-link'));jump.append(label,playerNames(match));jump.setAttribute('aria-current',String(selected?.id===match.id));row.append(jump);
+            const jump=button('',()=>seekPosition(match,0),'lab-match-jump'),label=node('span',undefined,'lab-match-label');label.append(node('strong',`試合 ${isFeature?index+1:match.analysis?.index||index+1}`),node('span','▶ '+timeText(match.startSeconds+source.offset),'ts-link'));jump.append(label,playerNames(match));jump.setAttribute('aria-current',String(selected?.id===match.id));row.append(jump);
+            if(isFeature)row.append(node('span',sourceBadge(source.ordinal),'lab-source-badge'));
             if(match.status==='failed')row.append(node('span','解析失敗','lab-failed'));tags(row,match.labOwnTags||match.tags);list.append(row);
         }if(!rows.size)list.append(node('p','条件に合う試合はありません。','lab-help-text'));requestAnimationFrame(()=>{revealMatch();updateScrollButtons();});};
     for(const select of playerSelects)select.onchange=()=>renderList();
     const showPosition=index=>{if(!selected||!pages.length)return;index=Math.max(0,Math.min(index,pages.length-1));if(index===lastPosition)return;lastPosition=index;slider.value=index;
-        const page=pages[index],seconds=selected.startSeconds+(page.time||0);positionText.textContent=`局面 ${index+1} / ${pages.length} · 動画 ${timeText(seconds+timeOffset(video))}`;
+        const page=pages[index],seconds=selected.startSeconds+(page.time||0);positionText.textContent=`局面 ${index+1} / ${pages.length} · 動画 ${timeText(seconds+sourceOf(selected).offset)}`;
         if(viewer)viewer.show(selected,pages,index);else{boards.replaceChildren();boards.append(boardElement(page.p1?.board,'P1',page.p1),boardElement(page.p2?.board,'P2',page.p2));}actions.replaceChildren();
         const reference={...selected,startSeconds:seconds,phase:index,player:'both',_matchStart:selected.startSeconds};const data=pageState(page,'both',queuesForPage(selected,index,page));
         simLink.href=toolUrl('sim',data,reference);const replay=new URL('F/',state.token?state.toolOrigin+'/':publicToolBase);replay.hash=matchHash;replay.searchParams.set('page',String(index+1));viewerLink.href=replay.href;
         if(state.token){actions.append(button('記事に盤面を挿入',()=>research.addToArticle('position',data,reference)),button('局面をフォルダに保存',()=>research.capture(data,reference)));research.targetLabel(actions);}};
     const choose=match=>{if(selected?.id===match.id)return;selected=match;lastPosition=-1;boundaryNote.hidden=true;for(const[id,row]of rows){row.classList.toggle('active',id===match.id);row.querySelector('.lab-match-jump')?.setAttribute('aria-current',String(id===match.id));}revealMatch();
-        title.textContent=`試合 ${match.analysis?.index||video.labMatches.indexOf(match)+1}`;pages=replayPages(match);matchHash=pages.length?new URL(match.simulator.combined).hash:'';slider.max=Math.max(0,pages.length-1);slider.disabled=!pages.length;actions.replaceChildren();if(!viewer)boards.replaceChildren();matchActions.replaceChildren();
+        title.textContent=`試合 ${isFeature?video.labMatches.indexOf(match)+1:match.analysis?.index||video.labMatches.indexOf(match)+1}`;pages=replayPages(match);matchHash=pages.length?new URL(match.simulator.combined).hash:'';slider.max=Math.max(0,pages.length-1);slider.disabled=!pages.length;actions.replaceChildren();if(!viewer)boards.replaceChildren();matchActions.replaceChildren();
+        refreshSourceLink();
         if(!pages.length){positionText.textContent='解析失敗：この試合の結果は確定していません。';return;}
         showPosition(0);
         if(state.token){const analysis=node('details',undefined,'lab-research-options');analysis.append(node('summary','この試合のAI分析'),scoreWidget([match],'この試合をAI採点'));matchActions.append(analysis);}
     };
-    const sync=seconds=>{if(!Number.isFinite(seconds))return;const result=playbackPosition(video.labMatches,seconds-timeOffset(video),replayPages,preferredPosition);if(!result.pinned)preferredPosition=null;const first=result.match&&replayPages(result.match)[0],available=!!(result.match&&result.index>=0&&first&&seconds-timeOffset(video)>=result.match.startSeconds+(first.time||0));if(!available){setCoverage(false);remember();return;}choose(result.match);setCoverage(true);showPosition(result.index);remember();};
-    const seekPosition=(match,index)=>{if(!match)return;choose(match);index=Math.max(0,Math.min(index,pages.length-1));if(!pages[index])return;const seconds=match.startSeconds+(pages[index]?.time||0);preferredPosition={recordId:match.id,index,seconds};setCoverage(true);showPosition(index);window.seekDetailVideo(seconds+timeOffset(video),{pause:true});remember();};
-    positionContext=()=>{const time=window.labVideoTime?.(),seconds=Number.isFinite(time)?time:selected?.startSeconds+timeOffset(video)||0,page=pages[lastPosition];return {seconds,data:covered&&page?pageState(page,'both'):null,reference:covered&&selected?{...selected,startSeconds:seconds-timeOffset(video),phase:lastPosition,player:'both',_matchStart:selected.startSeconds}:{...videoRecord(video),startSeconds:seconds,youtubeOffsetSeconds:0,player:'both'}};};
-    const restore=value=>{if(!work.isConnected||value?.videoId!==video.id)return;const match=video.labMatches.find(m=>m.id===value.recordId);if(match)choose(match);follow.checked=value.follow!==false;fixedNote.hidden=follow.checked;lastPosition=-1;const index=Number.isInteger(value.index)?value.index:0;if(match&&pages[index]){preferredPosition={recordId:match.id,index,seconds:value.seconds-timeOffset(video)};showPosition(index);}window.seekDetailVideo(value.seconds,{pause:true});if(!follow.checked)setCoverage(value.covered&&!!pages[index]);remember();};
+    // 出典動画を切り替える（特集）。同じ動画ならシークだけ。
+    function ensureSource(source,absolute,options={}){
+        const pause=options.pause!==false;
+        if(!source||!source.youtubeId)return false;
+        lastSeekAt=Date.now();refreshSourceLink();
+        if(mountedSource&&mountedSource.key===source.key){window.seekDetailVideo(absolute,{pause});return true;}
+        mountedSource=source;pendingSeek=absolute;dropPreload(source.youtubeId);
+        if(window.labDetailReady?.())window.loadDetailVideo(source.youtubeId,absolute,{pause});
+        else window.startDetailYouTube(source.youtubeId,{title:source.title,initialTime:absolute,autoplay:!pause,
+            onReady:()=>{if(work.isConnected)window.seekDetailVideo(absolute,{pause});}});
+        return true;
+    }
+    const featureIndex=()=>selected?video.labMatches.findIndex(match=>match.id===selected.id):-1;
+    const preloadNextFeature=()=>{
+        if(!isFeature)return;
+        const index=featureIndex();if(index<0)return;
+        const current=sourceOf(selected).youtubeId;
+        for(let next=index+1;next<video.labMatches.length;next+=1){const source=sourceOf(video.labMatches[next]);if(source.youtubeId&&source.youtubeId!==current){preloadVideo({youtubeId:source.youtubeId});return;}}
+    };
+    const sync=seconds=>{
+        if(!Number.isFinite(seconds))return;
+        if(pendingSeek!==null){if(Math.abs(seconds-pendingSeek)>4)return;pendingSeek=null;}
+        const source=mountedSource||sourceOf(selected);if(!source)return;
+        const offset=Number(source.offset)||0,relative=seconds-offset,list=matchesFor(source);
+        const result=playbackPosition(list,relative,replayPages,preferredPosition);if(!result.pinned)preferredPosition=null;
+        const first=result.match&&replayPages(result.match)[0],available=!!(result.match&&result.index>=0&&first&&relative>=result.match.startSeconds+(first.time||0));
+        if(!available){setCoverage(false);remember();return;}
+        choose(result.match);setCoverage(true);showPosition(result.index);remember();
+    };
+    const seekPosition=(match,index,options={})=>{
+        if(!match)return;
+        choose(match);
+        index=Math.max(0,Math.min(index,pages.length-1));
+        if(!pages[index])return;
+        const source=sourceOf(match),seconds=match.startSeconds+(pages[index]?.time||0);
+        preferredPosition={recordId:match.id,index,seconds};
+        setCoverage(true);showPosition(index);
+        if(isFeature)ensureSource(source,seconds+source.offset,{pause:options.play!==true});
+        else window.seekDetailVideo(seconds+source.offset,{pause:options.play!==true});
+        remember();
+        if(isFeature){saveFeature();preloadNextFeature();}
+    };
+    const stepFeature=delta=>{if(!isFeature)return;const index=featureIndex(),next=video.labMatches[index+delta];if(!next)return;seekPosition(next,0,{play:true});};
+    const toggleFeatureAuto=()=>{featureAuto=!featureAuto;if(autoButton)autoButton.textContent=featureAuto?'自動送り:入':'自動送り:切';saveFeature();};
+    const featureTick=()=>{
+        if(!isFeature||!featureAuto||!selected)return;
+        const time=window.labVideoTime?.();
+        if(pendingSeek!==null){if(Number.isFinite(time)&&Math.abs(time-pendingSeek)<=4)pendingSeek=null;else return;}
+        if(![0,1].includes(window.labVideoState?.()))return;
+        const source=sourceOf(selected),end=(Number(selected.endSeconds)||0)+source.offset;
+        if(!Number.isFinite(time)||time<end-.4)return;
+        const index=featureIndex();
+        if(index+1>=video.labMatches.length){featureAuto=false;if(autoButton)autoButton.textContent='自動送り:切';window.pauseDetailVideo?.();saveFeature();return;}
+        seekPosition(video.labMatches[index+1],0,{play:true});
+    };
+    positionContext=()=>{const time=window.labVideoTime?.(),offset=selected?sourceOf(selected).offset:timeOffset(video),seconds=Number.isFinite(time)?time:selected?.startSeconds+offset||0,page=pages[lastPosition];return {seconds,data:covered&&page?pageState(page,'both'):null,reference:covered&&selected?{...selected,startSeconds:seconds-offset,phase:lastPosition,player:'both',_matchStart:selected.startSeconds}:{...videoRecord(video),startSeconds:seconds,youtubeOffsetSeconds:0,player:'both'}};};
+    const restore=value=>{if(isFeature||!work.isConnected||value?.videoId!==video.id)return;const match=video.labMatches.find(m=>m.id===value.recordId);if(match)choose(match);follow.checked=value.follow!==false;fixedNote.hidden=follow.checked;lastPosition=-1;const index=Number.isInteger(value.index)?value.index:0;if(match&&pages[index]){preferredPosition={recordId:match.id,index,seconds:value.seconds-timeOffset(video)};showPosition(index);}window.seekDetailVideo(value.seconds,{pause:true});if(!follow.checked)setCoverage(value.covered&&!!pages[index]);remember();};
     const jumpToSource=point=>{const match=video.labMatches.find(m=>m.id===point.recordId);if(match)choose(match);follow.checked=true;
-        const seconds=Number.isFinite(point.youtubeSeconds)?point.youtubeSeconds-timeOffset(video):Number.isFinite(point.seconds)?point.seconds:match?.startSeconds||0;
+        const source=sourceOf(match),offset=source.offset;
+        const seconds=Number.isFinite(point.youtubeSeconds)?point.youtubeSeconds-offset:Number.isFinite(point.seconds)?point.seconds:match?.startSeconds||0;
         const phase=Number.isInteger(point.phase)&&point.phase>=0?point.phase:-1;
         const exact=selected?.id===match?.id&&pages[phase]&&Math.abs(match.startSeconds+(pages[phase].time||0)-seconds)<0.05;
-        preferredPosition=null;if(exact)seekPosition(match,phase);else window.seekDetailVideo(seconds+timeOffset(video),{pause:true});
+        preferredPosition=null;if(exact)seekPosition(match,phase);else if(isFeature)ensureSource(source,seconds+offset,{pause:true});else window.seekDetailVideo(seconds+offset,{pause:true});
         const index=exact?phase:lastPosition;lastPosition=-1;showPosition(index);comparison.scrollIntoView({block:'start'});};
     state.onMarker=state.onSource=jumpToSource;
     state.onSeek=seconds=>{lastSeekAt=Date.now();if(follow.checked)sync(seconds);};slider.oninput=()=>seekPosition(selected,Number(slider.value));
     follow.onchange=()=>{fixedNote.hidden=follow.checked;if(follow.checked)sync(window.labVideoTime?.());remember();};
     state.onVideoState=value=>{if(value===1&&!state.tools.size&&!follow.checked){follow.checked=true;follow.onchange();}};
     state.captureResearch=remember;state.restoreResearch=restore;
-    filter.oninput=renderList;renderList();choose(video.labMatches[0]);setCoverage(!!pages.length);
-    const previous=state.researchPositions.get(video.id);if(state.token&&previous&&!state.pendingSource&&!state.pendingMarker){state.onVideoReady=()=>{state.onVideoReady=null;restore(previous);};}
+    filter.oninput=renderList;renderList();choose(video.labMatches[featureStart]);setCoverage(!!pages.length);
+    if(isFeature)preloadNextFeature();
+    const previous=state.researchPositions.get(video.id);if(state.token&&!isFeature&&previous&&!state.pendingSource&&!state.pendingMarker){state.onVideoReady=()=>{state.onVideoReady=null;restore(previous);};}
     else if(!state.pendingSource&&!state.pendingMarker)state.onVideoReady=()=>{state.onVideoReady=null;seekPosition(selected,Math.max(0,lastPosition));};
     state.timer=setInterval(()=>{if(!work.isConnected){clearInterval(state.timer);return;}if(!state.tools.size&&follow.checked&&Date.now()-lastSeekAt>800){
-        const videoState=window.labVideoState?.();if(videoState===-1||videoState===3)return;
-        let time=window.labVideoTime?.();
-        // A paused YouTube seek can report the preceding whole second. Retain
-        // the explicitly selected phase until playback or a real seek advances it.
-        if(preferredPosition&&!window.labVideoPlaying?.()&&Math.abs(time-timeOffset(video)-preferredPosition.seconds)<1)time=preferredPosition.seconds+timeOffset(video);
-        sync(time);
-    }},250);
+        const videoState=window.labVideoState?.();
+        if(videoState!==-1&&videoState!==3){
+            let time=window.labVideoTime?.();
+            const offset=selected?sourceOf(selected).offset:timeOffset(video);
+            // A paused YouTube seek can report the preceding whole second. Retain
+            // the explicitly selected phase until playback or a real seek advances it.
+            if(preferredPosition&&!window.labVideoPlaying?.()&&Math.abs(time-offset-preferredPosition.seconds)<1)time=preferredPosition.seconds+offset;
+            sync(time);
+        }
+    }
+    if(isFeature)featureTick();
+    },250);
     // Moving an iframe's ancestor resets its browsing context. Mount only after layout is final.
-    mountPlayback(video,left);
+    if(isFeature){const initialSource=sourceOf(video.labMatches[featureStart]);mountedSource=initialSource;pendingSeek=initialSource.offset+(video.labMatches[featureStart]?.startSeconds||0);mountPlayback(video,left,{source:initialSource,initialSeconds:pendingSeek});}
+    else mountPlayback(video,left);
 }
 async function saveSnapshot(data,reference){
     const source=research.sourceRef(reference);
@@ -500,7 +602,7 @@ function afterRoute(page,id){state.disposeFeature?.();state.disposeFeature=null;
     const viewedVideo=page==='videos'?state.videos.find(v=>v.id===id):page==='feature'&&featurePage?.id===id?featurePage:null;document.body.classList.toggle('lab-viewing-analysis',!!viewedVideo?.labMatches?.length&&(page==='feature'||state.token||viewedVideo.publicPlayback?.enabled!==false));
     updateHeaderSize();
     if(page==='videos'&&id){const video=state.videos.find(v=>v.id===id);if(video){mountVideo(video);if(state.token&&manager){const actions=node('div',undefined,'manager-detail-bar');actions.append(button('研究の一覧',()=>window.router('manage','research')),manager.videoTrash(video));const heading=document.querySelector('.lab-video-heading-actions');if(heading)heading.prepend(actions);else document.getElementById('main-view').prepend(actions);}}}
-    if(page==='feature'&&id&&featurePage?.id===id){document.querySelector('.nav-item[onclick="router(\'videos\')"]')?.classList.add('active');mountFeature(featurePage);}
+    if(page==='feature'&&id&&featurePage?.id===id){document.querySelector('.nav-item[onclick="router(\'videos\')"]')?.classList.add('active');mountVideo(featurePage);}
     if(page==='articles'&&id){const record=state.records.find(r=>r.kind==='article'&&recordId(r)===id);if(record){if(state.token)document.querySelector('.article-header')?.append(button('この記事を編集',()=>openEdit(record)),trashButton(record,()=>window.router('articles')));research.renderCitations(record);}}
     if(page==='videos'&&id&&state.pendingMarker){const point=state.pendingMarker;state.pendingMarker=null;state.onMarker?.(point);}
     if(page==='videos'&&id&&state.pendingSource){const ref=state.pendingSource;state.pendingSource=null;if(state.onSource)state.onSource(ref);else window.seekDetailVideo(ref.seconds+(ref.youtubeId?(ref.youtubeOffsetSeconds||0):0));}
@@ -519,153 +621,6 @@ function renderFeature(id){
     const record=featureFor(id);
     if(!record?.labFeatureRows.length){window.router('videos');return;}
     window.renderVideoDetailPage(record,{backLabel:'動画研究に戻る',manualPlayback:true});
-}
-function featurePlaybackError(code){
-    if(code==='timeout')return 'YouTubeとの接続を確認できません。動画が表示されない場合はページを再読み込みしてください。';
-    if([101,150].includes(code))return 'この動画はYouTube側で埋め込み再生が許可されていません。';
-    if(code===100)return '動画が削除されたか、非公開になっています。';
-    return 'YouTubeを読み込めませんでした（'+code+'）。';
-}
-function mountFeature(record){
-    const left=document.querySelector('.video-sticky-area'),container=left?.parentElement;
-    const right=document.querySelector('.video-detail-container > .article-body');
-    if(!left||!container||!right)return;
-    const rows=record.labFeatureRows,sources=record.labFeatureSources||[];
-    let position=0,auto=true,mountedVideoId='',alive=true,timer=0,switchedAt=0;
-    try{const saved=JSON.parse(sessionStorage.getItem('lab-feature-'+record.id)||'null');if(saved&&Number.isInteger(saved.index)&&rows[saved.index]){position=saved.index;auto=saved.auto!==false;}}catch{}
-    const absolute=row=>(Number(row.match.startSeconds)||0)+(Number(row.offset)||0);
-    const save=()=>{try{sessionStorage.setItem('lab-feature-'+record.id,JSON.stringify({index:position,auto}));}catch{}};
-    // 見出し（既存の動画詳細と同じ組み方）
-    const heading=node('div',undefined,'lab-video-heading lab-feature-heading'),identity=node('div',undefined,'lab-video-identity'),metadata=node('div',undefined,'lab-video-meta'),headingActions=node('div',undefined,'lab-video-heading-actions');
-    const streamTitle=left.querySelector(':scope > .article-title');
-    if(streamTitle){
-        // 末尾の [2026-09-14 - 2026-10-19] は途中で折り返さない
-        const text=streamTitle.textContent||'',range=text.match(/\[[^\]]+\]$/);
-        if(range){streamTitle.replaceChildren(document.createTextNode(text.slice(0,range.index)),node('span',range[0],'lab-feature-range'));}
-        identity.append(streamTitle);
-    }
-    for(const child of left.querySelectorAll(':scope > .lab-video-date,:scope > .lab-video-tags'))metadata.append(child);
-    identity.append(metadata);
-    const back=document.querySelector('#main-view > button[onclick]');
-    if(back&&back.getAttribute('onclick')==="router('videos')"){back.style.marginBottom='0';headingActions.append(back);}
-    heading.append(identity,headingActions);
-    container.before(heading);
-    // 左にプレイヤー、右に再生パネル（解析ページと同じ比較グリッド）
-    const comparison=node('section',undefined,'lab-comparison');comparison.setAttribute('aria-label','特集の再生と試合一覧');
-    container.classList.add('lab-analyzed-video');left.before(comparison);
-    const panel=node('section',undefined,'lab-workbench lab-feature-workbench');
-    const meterWrap=node('div',undefined,'lab-feature-progress'),meter=node('span');meterWrap.append(meter);
-    const positionText=node('p',undefined,'lab-feature-position'),sourceText=node('p',undefined,'lab-feature-source');
-    const controls=node('div',undefined,'lab-inline-actions lab-feature-controls');
-    const previous=button('前の試合',()=>step(-1)),next=button('次の試合',()=>step(1));
-    const autoButton=button('自動送り:入',()=>{auto=!auto;save();paint();});
-    controls.append(previous,next,autoButton);
-    const panelActions=node('div',undefined,'lab-inline-actions');
-    panelActions.append(button('この試合の解析',openCurrentAnalysis),button('最初から',()=>{position=0;load({autoplay:true});}));
-    panel.append(node('h3','特集の再生'),meterWrap,positionText,sourceText,controls,panelActions);
-    comparison.append(left,panel);
-    // プレイヤーの状態表示（出典動画がない・埋め込み不可のとき）
-    const status=node('p',undefined,'lab-playback-status');status.setAttribute('role','status');left.querySelector('.video-wrapper')?.after(status);
-    // 試合のタイムライン（解析ページと同じ横スクロール）
-    const timeline=node('section',undefined,'lab-match-timeline lab-feature-timeline');timeline.setAttribute('aria-label','特集の試合一覧');
-    const filterRow=node('div',undefined,'lab-match-filters'),search=node('input',undefined,'lab-tag-filter');
-    search.type='search';search.placeholder='試合を検索（選手名・動画名）';search.setAttribute('aria-label','特集の試合を絞り込む');filterRow.append(search);timeline.append(filterRow);
-    const rail=node('div',undefined,'lab-match-rail'),earlier=button('‹',()=>scrollRows(-1),'btn-outline lab-match-scroll'),later=button('›',()=>scrollRows(1),'btn-outline lab-match-scroll');
-    earlier.setAttribute('aria-label','前の試合へ');later.setAttribute('aria-label','次の試合へ');
-    const list=node('div',undefined,'lab-match-list');list.setAttribute('aria-label','特集の試合');
-    rail.append(earlier,list,later);timeline.append(rail);left.append(timeline);
-    const rowNodes=rows.map((row,index)=>{
-        const item=node('div',undefined,'lab-match-row'),jump=button('',()=>{position=index;load({autoplay:true});},'lab-match-jump'),label=node('span',undefined,'lab-match-label');
-        label.append(node('strong',String(index+1)),node('span','▶ '+timeText(absolute(row)),'ts-link'));
-        jump.append(label,playerNames(row.match));
-        item.append(jump,node('span',sourceBadge(row.sourceOrdinal),'lab-source-badge'));
-        list.append(item);return item;
-    });
-    // 再生: 別のYouTube動画なら切り替えて頭出し、同じ動画ならシーク
-    function load(options={}){
-        const row=rows[position];if(!row)return;
-        const video=row.video,start=absolute(row),autoplay=options.autoplay===true;
-        if(!video.youtubeId){status.textContent='この試合の出典動画にYouTubeのリンクがありません。';paint();return;}
-        status.textContent='';dropPreload(video.youtubeId);switchedAt=Date.now();
-        const play=()=>{if(!alive)return;window.loadDetailVideo(video.youtubeId,start,{pause:!autoplay});};
-        const same=mountedVideoId===video.youtubeId&&!!window.labDetailReady?.();
-        mountedVideoId=video.youtubeId;
-        // 同じ動画内はシークだけにして、読み直しを挟まない
-        if(same)window.seekDetailVideo(start,{pause:!autoplay});
-        else if(window.labDetailReady?.())play();
-        else window.startDetailYouTube(video.youtubeId,{title:video.title,initialTime:start,autoplay,
-            onReady:play,
-            onError:code=>{if(alive)status.textContent=featurePlaybackError(code);}});
-        paint();preloadNext();save();
-    }
-    function preloadNext(){
-        const current=rows[position]?.video.youtubeId||mountedVideoId;
-        for(let index=position+1;index<rows.length;index+=1){if(rows[index].video.youtubeId&&rows[index].video.youtubeId!==current){preloadVideo(rows[index].video);return;}}
-    }
-    function step(delta){
-        const next=Math.max(0,Math.min(position+delta,rows.length-1));
-        if(next===position&&delta!==0)return;
-        position=next;load({autoplay:true});
-    }
-    function openCurrentAnalysis(){
-        const row=rows[position];if(!row)return;
-        const pages=replayPages(row.match);
-        state.pendingSource={recordId:row.match.id,seconds:(row.match.startSeconds||0)+(pages[0]?.time||0),phase:0};
-        window.router('videos',row.video.id);
-    }
-    function paint(){
-        const row=rows[position];if(!row)return;
-        positionText.textContent='試合 '+(position+1)+' / '+rows.length;
-        meter.style.width=(((position+1)/rows.length)*100).toFixed(1)+'%';
-        autoButton.textContent=auto?'自動送り:入':'自動送り:切';
-        const link=node('a',row.video.title,'lab-feature-source-link');link.href='#videos/'+encodeURIComponent(row.video.id);
-        sourceText.replaceChildren(document.createTextNode('出典 '),node('span',sourceBadge(row.sourceOrdinal),'lab-source-badge'),document.createTextNode(' '),link,
-            node('br'),node('span',(row.video.date||'')+' · '+timeText(absolute(row))+'〜'+timeText((Number(row.match.endSeconds)||0)+(Number(row.offset)||0)),'lab-help-text'));
-        rowNodes.forEach((item,index)=>{item.classList.toggle('active',index===position);const jump=item.querySelector('.lab-match-jump');if(index===position)jump.setAttribute('aria-current','true');else jump.removeAttribute('aria-current');});
-        requestAnimationFrame(()=>reveal(position));
-    }
-    function reveal(index){
-        const item=rowNodes[index];if(!item||item.hidden)return;
-        const box=item.getBoundingClientRect(),view=list.getBoundingClientRect();
-        if(box.left<view.left)list.scrollBy({left:box.left-view.left-4});else if(box.right>view.right)list.scrollBy({left:box.right-view.right+4});
-    }
-    function scrollRows(direction){list.scrollBy({left:direction*Math.max(160,list.clientWidth*.8),behavior:'auto'});}
-    function updateScrollButtons(){earlier.disabled=list.scrollLeft<=1;later.disabled=list.scrollLeft+list.clientWidth>=list.scrollWidth-1;}
-    function matchesFilter(row){
-        const words=normalize(search.value).split(' ').filter(Boolean);if(!words.length)return true;
-        const text=normalize(JSON.stringify([row.match.title,row.match.players,row.match.tags,row.video.title,row.video.date]));
-        return words.every(word=>text.includes(word));
-    }
-    function applyFilter(){rowNodes.forEach((item,index)=>{item.hidden=!matchesFilter(rows[index]);});updateScrollButtons();}
-    // 自動送り: 再生中（または終了直後）に試合の終わりへ来たら次へ
-    function tick(){
-        if(!alive||!auto)return;
-        if(Date.now()-switchedAt<1500)return;
-        const row=rows[position];if(!row)return;
-        const end=(Number(row.match.endSeconds)||0)+(Number(row.offset)||0);if(!(end>0))return;
-        if(![0,1].includes(window.labVideoState?.()))return;
-        const seconds=window.labVideoTime?.();if(!Number.isFinite(seconds)||seconds<end-.4)return;
-        if(position+1>=rows.length){auto=false;window.pauseDetailVideo?.();save();paint();status.textContent='特集の最後まで再生しました。';return;}
-        position+=1;load({autoplay:true});
-    }
-    search.addEventListener('input',applyFilter);list.addEventListener('scroll',updateScrollButtons,{passive:true});
-    const observer=new ResizeObserver(updateScrollButtons);observer.observe(list);
-    state.disposeFeature=()=>{alive=false;clearInterval(timer);observer.disconnect();clearPreloads();};
-    // このページでは解析盤面を表示しないので、シミュレータの代わりに元の解析ページへ送る
-    const analysisButton=document.getElementById('ppt-simulator');
-    if(analysisButton){analysisButton.textContent='この試合の解析を開く';analysisButton.onclick=event=>{event.preventDefault();openCurrentAnalysis();};}
-    window.labCurrentVideo=()=>null;
-    // 出典動画の一覧（右の本文の下）
-    const sourceSection=node('section',undefined,'lab-analysis-panel');sourceSection.append(node('h2','出典の動画'));
-    const sourceList=node('ol',undefined,'lab-feature-sources');
-    for(const source of sources){
-        const item=node('li'),link=node('a',source.video.title,'lab-feature-source-link');link.href='#videos/'+encodeURIComponent(source.video.id);
-        item.append(node('span',sourceBadge(source.ordinal),'lab-source-badge'),document.createTextNode(' '),link,node('span','（'+(source.video.date||'')+' · '+source.count+'試合）','lab-help-text'));
-        sourceList.append(item);
-    }
-    sourceSection.append(sourceList);right.append(sourceSection);
-    timer=setInterval(tick,500);state.timer=timer;
-    paint();applyFilter();load({autoplay:false});
 }
 
 const videoLibrary=createVideoLibrary({state,node,button,openMatch:(video,match)=>{
