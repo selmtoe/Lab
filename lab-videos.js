@@ -96,7 +96,25 @@ export function createVideoLibrary({state, node, button, openMatch}) {
                 } else {
                     const {video, match} = row, card = node('article', undefined, 'card lab-video-match-card');
                     const meta = node('div', undefined, 'card-meta');meta.append(node('span', video.title), node('span', video.date || ''));
-                    const heading = node('h3', undefined, 'card-title'), title = node('a', `試合 ${match.analysis?.index || row.index + 1} · ${(match.players || []).filter(Boolean).join(' / ') || 'プレイヤー未登録'}`, 'card-title-action');
+                    const heading = node('h3', undefined, 'card-title'), title = node('a', '', 'card-title-action');
+                    title.append(document.createTextNode(`試合 ${match.analysis?.index || row.index + 1} · `));
+                    const names = (match.players || []).filter(Boolean);
+                    if (!names.length) title.append(document.createTextNode('プレイヤー未登録'));
+                    names.forEach((name, index) => {
+                        if (index) title.append(document.createTextNode(' / '));
+                        if (match.winner === (index === 0 ? 'p1' : 'p2')) {
+                            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                            svg.setAttribute('viewBox', '0 0 24 24');
+                            svg.setAttribute('class', 'lab-crown' + (match.winnerStatus !== 'ok' ? ' lab-crown-review' : ''));
+                            svg.setAttribute('role', 'img');
+                            svg.setAttribute('aria-label', '勝者');
+                            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                            path.setAttribute('d', 'M2.5 19.5v-12l5 3.6L12 4.6l4.5 6.5 5-3.6v12z');
+                            svg.append(path);
+                            title.append(svg);
+                        }
+                        title.append(document.createTextNode(name));
+                    });
                     title.href = '#videos/' + encodeURIComponent(video.id);
                     title.onclick = event => {if (event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;event.preventDefault();openMatch(video, match);};heading.append(title);
                     const offset = video.youtubeId ? Number(video.youtubeOffsetSeconds) || 0 : 0;
