@@ -91,8 +91,13 @@ export function createVideoLibrary({state, node, button, openMatch}) {
         const clear = button('絞り込みを解除', () => {
             for (const [key, input] of inputs) input.value = filters[key] = key === 'sort' ? 'newest' : '';
             page = 0;draw();
-        });        const playlist = button('特集再生', () => startPlaylist({index, filters, openMatch}));
-        controls.append(clear, playlist);root.append(controls);
+        });
+        // 絞り込み結果を1本の仮想動画（#feature/<id>）として開く
+        const feature = button('特集として開く', () => {
+            if (!filterVideoIndex(index, filters).some(entry => entry.matches.length)) return;
+            location.hash = 'feature/' + encodeURIComponent(featureId(filters));
+        });
+        controls.append(clear, feature);root.append(controls);
         const count = node('p', undefined, 'lab-video-count');count.setAttribute('aria-live', 'polite');
         const list = node('div', undefined, 'list-container'), pager = node('nav', undefined, 'lab-video-pagination');pager.setAttribute('aria-label', '一覧のページ');
         root.append(count, list, pager);
@@ -101,8 +106,13 @@ export function createVideoLibrary({state, node, button, openMatch}) {
             const entries = filterVideoIndex(index, filters), dated = video => Date.parse(video.date || video.updatedAt) || 0;
             entries.sort((a, b) => filters.sort === 'title' ? a.video.title.localeCompare(b.video.title, 'ja') : filters.sort === 'oldest' ? dated(a.video) - dated(b.video) : dated(b.video) - dated(a.video));
             const rows = mode === 'videos' ? entries : entries.flatMap(entry => entry.matches.map(row => ({...row, video:entry.video})));
+            // 試合一覧では、どの動画から来た試合かを「動画①」のように番号で示す
+            const sourceOrder = new Map();
+            if (mode === 'matches') for (const row of rows) if (!sourceOrder.has(row.video.id)) sourceOrder.set(row.video.id, sourceOrder.size + 1);
             const matchCount = entries.reduce((n, e) => n + e.matches.length, 0), pageCount = Math.max(1, Math.ceil(rows.length / 40));
             page = Math.min(page, pageCount - 1);
+            feature.disabled = matchCount === 0;
+            feature.title = matchCount ? `絞り込み結果の${matchCount}試合を1本の特集として開く` : '該当する試合がありません';
             count.textContent = `${entries.length}動画 · ${matchCount}試合`;
             for (const tab of modes) {tab.setAttribute('aria-pressed', String(tab.dataset.view === mode));tab.classList.toggle('lab-primary', tab.dataset.view === mode);}
             list.replaceChildren();pager.replaceChildren();
@@ -113,7 +123,10 @@ export function createVideoLibrary({state, node, button, openMatch}) {
                     if (summary) summary.textContent = row.matches.length === row.video.labMatches.length ? `解析 ${row.matches.length}試合` : `該当 ${row.matches.length} / ${row.video.labMatches.length}試合`;
                 } else {
                     const {video, match} = row, card = node('article', undefined, 'card lab-video-match-card');
-                    const meta = node('div', undefined, 'card-meta');meta.append(node('span', video.title), node('span', video.date || ''));
+                    const meta = node('div', undefined, 'card-meta');
+                    const badge = node('span', sourceBadge(sourceOrder.get(video.id)), 'lab-source-badge');
+                    badge.title = '出典: ' + video.title;
+                    meta.append(badge, node('span', video.title), node('span', video.date || ''));
                     const heading = node('h3', undefined, 'card-title'), title = node('a', '', 'card-title-action');
                     title.append(document.createTextNode(`試合 ${match.analysis?.index || row.index + 1} · `));
                     const names = (match.players || []).filter(Boolean);
@@ -154,125 +167,164 @@ export function createVideoLibrary({state, node, button, openMatch}) {
     return {render};
 }
 
-// ---- 特集再生: 絞り込み結果の試合を順に再生する ----
-let playlistState = null, playlistTimer = 0, playlistCtx = null;
-function currentRows() {
-    if (!playlistCtx) return [];
-    const filtered = filterVideoIndex(playlistCtx.index, playlistCtx.filters);
+// ---- 特集（仮想動画）: 絞り込み結果を1本の動画として扱う ----
+const FEATURE_KEYS = {query: 'q', player: 'p', opponent: 'o', tag: 't', result: 'r'};
+const EMPTY_FEATURE_FILTERS = {query: '', player: '', opponent: '', tag: '', result: ''};
+const FEATURE_RESULTS = {win: 'WIN', lost: 'LOSE', review: 'REVIEW'};
+
+// 出どころの動画番号（1 → ①、21以降はそのまま）
+export function circledNumber(value) {
+    const number = Math.max(1, Math.floor(Number(value) || 0));
+    return number <= 20 ? String.fromCodePoint(0x245f + number) : String(number);
+}
+export function sourceBadge(ordinal) { return '動画' + circledNumber(ordinal); }
+
+// 絞り込み条件をURLに載せられる短いIDにする（#feature/<id>）
+export function featureId(filters = {}) {
+    const value = {};
+    for (const [key, short] of Object.entries(FEATURE_KEYS)) {
+        const text = String(filters[key] ?? '').trim();
+        if (text) value[short] = text;
+    }
+    if (!Object.keys(value).length) return 'all';
+    let binary = '';
+    for (const byte of new TextEncoder().encode(JSON.stringify(value))) binary += String.fromCharCode(byte);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+export function featureFiltersFromId(id) {
+    if (!id || id === 'all') return {...EMPTY_FEATURE_FILTERS};
+    let value;
+    try {
+        const binary = atob(String(id).replace(/-/g, '+').replace(/_/g, '/'));
+        value = JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, character => character.charCodeAt(0))));
+    } catch { return null; }
+    if (!value || typeof value !== 'object') return null;
+    const filters = {...EMPTY_FEATURE_FILTERS};
+    for (const [key, short] of Object.entries(FEATURE_KEYS)) if (typeof value[short] === 'string') filters[key] = value[short];
+    return filters;
+}
+
+// 絞り込み結果の試合を、出典動画の公開日→試合開始時刻の順に並べる
+export function featureRows(index, filters = {}) {
     const rows = [];
-    for (const entry of filtered) {
-        for (const row of entry.matches) rows.push({ video: entry.video, match: row.match });
+    for (const entry of filterVideoIndex(index, filters)) {
+        for (const row of entry.matches) rows.push({
+            video: entry.video, match: row.match, sourceIndex: row.index,
+            offset: entry.video.youtubeId ? Number(entry.video.youtubeOffsetSeconds) || 0 : 0
+        });
+    }
+    const dated = row => Date.parse(row.video.date || row.video.updatedAt) || 0;
+    rows.sort((a, b) => dated(a) - dated(b)
+        || (Number(a.match.startSeconds) || 0) - (Number(b.match.startSeconds) || 0)
+        || String(a.match.id).localeCompare(String(b.match.id)));
+    const ordinals = new Map();
+    for (const row of rows) {
+        if (!ordinals.has(row.video.id)) ordinals.set(row.video.id, ordinals.size + 1);
+        row.sourceOrdinal = ordinals.get(row.video.id);
     }
     return rows;
 }
-function playlistBar() {
-    let bar = document.getElementById('lab-playlist-bar');
-    if (!bar) {
-        bar = document.createElement('div');
-        bar.id = 'lab-playlist-bar';
-        bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:95;'
-            + 'display:flex;gap:10px;align-items:center;padding:8px 14px;border-radius:999px;'
-            + 'background:var(--surface-color);border:1px solid var(--border-color);'
-            + 'box-shadow:0 6px 24px rgba(0,0,0,.18);font-size:13px;color:var(--text-main)';
-        document.body.append(bar);
-    }
-    return bar;
-}
-function preloadItem(item) {
-    if (!item || !item.video?.youtubeId) return;
-    const id = 'lab-preload-' + item.video.youtubeId;
-    if (document.getElementById(id)) return;
-    const frame = document.createElement('iframe');
-    frame.id = id;
-    frame.src = `https://www.youtube.com/embed/${item.video.youtubeId}?autoplay=0&mute=1&controls=0`;
-    frame.setAttribute('aria-hidden', 'true');
-    frame.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-10px;top:-10px;border:0';
-    document.body.append(frame);
-}
-function savePlaylist() {
-    try {
-        if (!playlistState) { sessionStorage.removeItem('lab-playlist'); return; }
-        sessionStorage.setItem('lab-playlist', JSON.stringify({
-            index: playlistState.index, auto: playlistState.auto, filters: playlistCtx?.filters,
-            items: playlistState.items.map(item => ({videoId: item.video.id, matchId: item.match.id}))
-        }));
-    } catch (_) {}
-}
-function playStep(delta) {
-    if (!playlistState) return;
-    preloadItem(playlistState.items[playlistState.index + 1]);
-    savePlaylist();
-    const next = playlistState.index + delta;
-    if (next < 0 || next >= playlistState.items.length) return stopPlaylist();
-    playlistState.index = next;
-    savePlaylist();
-    preloadItem(playlistState.items[next + 1]);
-    const item = playlistState.items[next];
-    playlistCtx?.openMatch(item.video, item.match);
-    renderPlaylistBar();
-}
-function renderPlaylistBar() {
-    if (!playlistState) return;
-    const bar = playlistBar(), item = playlistState.items[playlistState.index];
-    if (!bar || !item) return;
-    bar.replaceChildren();
-    const label = document.createElement('span');
-    label.textContent = `${playlistState.title || '特集'} ${playlistState.index + 1}/${playlistState.items.length}`
-        + ` · ${(item.match.players || []).filter(Boolean).join(' / ')} 試合${item.match.analysis?.index || ''}`
-        + (playlistState.auto ? ' · 自動送り' : '');
-    const prev = document.createElement('button');
-    prev.textContent = '前へ';prev.className = 'btn-outline';prev.onclick = () => playStep(-1);
-    const next = document.createElement('button');
-    next.textContent = '次へ';next.className = 'btn-outline';next.onclick = () => playStep(1);
-    const auto = document.createElement('button');
-    auto.textContent = playlistState.auto ? '自動送り:入' : '自動送り:切';auto.className = 'btn-outline';
-    auto.onclick = () => { playlistState.auto = !playlistState.auto; renderPlaylistBar(); scheduleAdvance(); };
-    const stop = document.createElement('button');
-    stop.textContent = '終了';stop.className = 'btn-outline';stop.onclick = stopPlaylist;
-    bar.append(label, prev, next, auto, stop);
-}
-function scheduleAdvance() {
-    clearTimeout(playlistTimer);
-    if (!playlistState || !playlistState.auto) return;
-    const item = playlistState.items[playlistState.index];
-    if (!item) return;
-    const tick = () => {
-        if (!playlistState || !playlistState.auto) return;
-        const seconds = window.labVideoTime?.();
-        if (Number.isFinite(seconds) && seconds >= (item.match.endSeconds || 0) - 0.3) {
-            playStep(1);
-            return;
-        }
-        playlistTimer = setTimeout(tick, 700);
-    };
-    playlistTimer = setTimeout(tick, 700);
-}
-export function stopPlaylist() {
-    playlistState = null;
-    try { sessionStorage.removeItem('lab-playlist'); } catch (_) {}
-    clearTimeout(playlistTimer);
-    document.getElementById('lab-playlist-bar')?.remove();
-}
-export function startPlaylist(ctx) {
-    if (ctx) playlistCtx = ctx;
-    const rows = currentRows();
-    if (!rows.length) return;
-    playlistState = { items: rows, index: 0, auto: true, title: featureTitle(playlistCtx?.filters, rows.length) };
-    renderPlaylistBar();
-    playStep(0);
-    scheduleAdvance();
-}
 
-// 絞り込み条件から特集タイトルを機械的に作る（例: 「いんたいの敗北集」「A vs B」）
-export function featureTitle(filters = {}, count = 0) {
+const featureQuote = value => /[\s"]/u.test(value) ? '"' + value.replace(/"/g, '') + '"' : value;
+
+// 絞り込み条件から特集タイトルを機械的に作る
+// 例: いんたい LOSE 42matches [2026-09-14 - 2026-10-19] / all 1101matches [...] / tag:名前 12matches
+export function featureTitle(filters = {}, count = 0, range = null) {
     const player = String(filters.player || '').trim();
     const opponent = String(filters.opponent || '').trim();
     const tag = String(filters.tag || '').trim();
-    const result = {win: '勝利集', lost: '敗北集', review: '未確定集'}[filters.result] || '';
-    let title;
-    if (player && opponent) title = `${player} vs ${opponent}` + (result ? ` の${result}` : '');
-    else if (player) title = `${player}の${result || '試合集'}`;
-    else if (tag) title = `${tag}の試合集`;
-    else title = result ? `全試合の${result}` : '試合集';
-    return count ? `${title}（${count}試合）` : title;
+    const query = String(filters.query || '').trim();
+    const result = FEATURE_RESULTS[filters.result] || '';
+    const parts = [];
+    if (query) parts.push('q:"' + query.replace(/"/g, '') + '"');
+    if (player && opponent) parts.push(player + ' vs ' + opponent);
+    else if (player) parts.push(player);
+    else if (opponent) parts.push('vs ' + opponent);
+    if ((player || opponent) && tag) parts.push('tag:' + featureQuote(tag));
+    else if (!player && !opponent) parts.push(tag ? 'tag:' + featureQuote(tag) : 'all');
+    // 勝敗はプレイヤーを指定したときだけ効く（絞り込み側の仕様に合わせる）
+    if (result && player) parts.push(result);
+    if (Number(count) > 0) parts.push(count + 'matches');
+    if (range?.from) parts.push(range.to && range.to !== range.from ? '[' + range.from + ' - ' + range.to + ']' : '[' + range.from + ']');
+    return parts.join(' ');
+}
+
+const featureDate = value => {
+    const date = new Date(value);
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+};
+
+// 仮想動画レコード（既存の動画詳細ページと同じ形）を作る
+export function featureRecord(index, filters = {}, {now = new Date()} = {}) {
+    const rows = featureRows(index, filters);
+    const dates = rows.map(row => String(row.video.date || '')).filter(Boolean).sort();
+    const range = dates.length ? {from: dates[0], to: dates[dates.length - 1]} : null;
+    const sources = new Map();
+    for (const row of rows) {
+        const source = sources.get(row.video.id) || {video: row.video, ordinal: row.sourceOrdinal, count: 0};
+        source.count += 1;
+        sources.set(row.video.id, source);
+    }
+    const picks = [filters.player, filters.opponent].map(value => String(value || '').trim()).filter(Boolean);
+    const tally = {win: 0, lose: 0, review: 0};
+    const self = String(filters.player || '').trim();
+    for (const row of rows) {
+        const match = row.match;
+        if (!self) break;
+        if (!match.winner || match.winnerStatus !== 'ok') { tally.review += 1; continue; }
+        const side = (match.players || []).map(normalize).indexOf(normalize(self));
+        if (side < 0) continue;
+        if (match.winner === (side === 0 ? 'p1' : 'p2')) tally.win += 1; else tally.lose += 1;
+    }
+    const tags = [filters.tag, ...picks, '特集'].map(value => String(value || '').trim()).filter(Boolean);
+    const title = featureTitle(filters, rows.length, range);
+    const summary = ['- 対象: ' + rows.length + '試合', '- 出典: ' + sources.size + '本の動画'];
+    if (range) summary.push('- 期間: ' + range.from + (range.to && range.to !== range.from ? ' — ' + range.to : ''));
+    if (self) summary.push('- 戦績: ' + tally.win + '勝 ' + tally.lose + '敗' + (tally.review ? '（未確定 ' + tally.review + '）' : ''));
+    const content = [
+        'この特集は動画研究の絞り込み結果を、古い順に1本の動画として続けて再生します。',
+        '',
+        ...summary,
+        '',
+        '条件を変えるときは「動画研究」の絞り込みから開き直してください。'
+    ].join('\n');
+    return {
+        id: featureId(filters),
+        labFeature: true,
+        featureFilters: {...filters},
+        title,
+        date: featureDate(now),
+        players: picks,
+        tags,
+        labOwnTags: tags,
+        content,
+        description: rows.length + '試合 · ' + sources.size + '本の動画' + (range ? ' · ' + range.from + ' — ' + range.to : ''),
+        youtubeId: '',
+        labMatches: rows.map(row => row.match),
+        labFeatureRows: rows,
+        labFeatureSources: [...sources.values()],
+        publicPlayback: {enabled: true}
+    };
+}
+
+// 次の出典動画を先読みしておく（表示はしない）
+export function preloadVideo(video) {
+    const youtubeId = video?.youtubeId;
+    if (!youtubeId) return;
+    const id = 'lab-preload-' + youtubeId;
+    if (document.getElementById(id)) return;
+    const frame = document.createElement('iframe');
+    frame.id = id;
+    frame.className = 'lab-preload-frame';
+    frame.src = `https://www.youtube.com/embed/${youtubeId}?autoplay=0&mute=1&controls=0`;
+    frame.setAttribute('aria-hidden', 'true');
+    frame.tabIndex = -1;
+    frame.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-10px;top:-10px;border:0';
+    document.body.append(frame);
+}
+export function dropPreload(youtubeId) {
+    if (youtubeId) document.getElementById('lab-preload-' + youtubeId)?.remove();
+}
+export function clearPreloads() {
+    for (const frame of document.querySelectorAll('iframe.lab-preload-frame')) frame.remove();
 }

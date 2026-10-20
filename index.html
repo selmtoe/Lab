@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -14,7 +14,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script async src="https://www.youtube.com/iframe_api"></script>
-<link rel="stylesheet" href="lab-enhancements.css?v=20261020-labfix1">
+<link rel="stylesheet" href="lab-enhancements.css?v=20261020-feature1">
 <link rel="stylesheet" href="lab-writer.css?v=20261018-whiteaccent">
 
 <style>
@@ -440,6 +440,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
             case 'dashboard': renderDashboard(); break;
             case 'articles': id ? renderArticleDetail(id) : renderArticleList(); break;
             case 'videos': id ? renderVideoDetail(id) : renderVideoList(); break;
+            case 'feature': window.LabExtension?.renderFeature(id); break;
             case 'video-matches': window.LabExtension?.renderVideoLibrary({mode:'matches'}); break;
             case 'tetofu': renderTetofu(); break;
             case 'tags': id ? renderTagDetail(id) : renderTagList(); break;
@@ -618,16 +619,10 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
     }
 
     // 4-2. VIDEO DETAIL (詳細ページ)
-    function renderVideoDetail(id) {
-        const v = getVideos().find(video => video.id === id);
-        if(!v) {
-            if(!window.LabExtension?.ready){mainView.innerHTML='<p role="status">動画を読み込んでいます…</p>';return;}
-            return router('videos');
-        }
-
-        detailPlayer = null; 
+    // 実動画と特集（仮想レコード）で同じ枠を使う。特集は再生の土台だけ差し替える。
+    function renderVideoDetailPage(v, options = {}) {
+        detailPlayer = null;
         pendingDetailSeek = null;
-        const playerId = `yt-player-detail`;
 
         // Markdown内の [mm:ss]{tag} を詳細プレイヤー操作用に変換
         const rawContent = v.content || "";
@@ -638,17 +633,17 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
             if(tagsRaw) {
                 tagHtml = tagsRaw.split(',').map(t => `<span class="tag" style="margin-left:4px; font-size:11px; padding:1px 6px;">${escapeHtml(t.trim())}</span>`).join('');
             }
-            // 詳細ページでは detailPlayer (seekVideo) を使う
             return `<a class="ts-link" data-video-seek="${time}">▶ ${timeStr}</a>${tagHtml}`;
         });
 
-        const html = `
-            <button class="btn-outline" onclick="router('videos')" style="margin-bottom: 24px;">← 動画一覧に戻る</button>
+        const backLabel = options.backLabel || '動画一覧に戻る';
+        mainView.innerHTML = `
+            <button class="btn-outline" onclick="router('${options.backPage || 'videos'}')" style="margin-bottom: 24px;">← ${escapeHtml(backLabel)}</button>
             
             <div class="video-detail-container">
                 <div class="video-sticky-area">
                     <div class="video-wrapper">
-                        <div id="${playerId}"></div>
+                        <div id="yt-player-detail"></div>
                     </div>
                     <div class="video-controls">
                         <button class="rate-btn" onclick="changeRate(0.25)">x0.25</button>
@@ -660,7 +655,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
       
                     <h1 class="article-title" style="font-size:24px;">${escapeHtml(v.title)}</h1>
 
-                    <div class="card-meta lab-video-date">${v.date}</div>
+                    <div class="card-meta lab-video-date">${escapeHtml(v.date || '')}</div>
                     <div class="lab-video-tags">${createTagHtml(v.tags)}</div>
                 </div>
 
@@ -669,9 +664,18 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
                 </div>
             </div>
         `;
-        mainView.innerHTML = html;
 
-        if (v.youtubeId && !window.LabExtension) window.startDetailYouTube(v.youtubeId);
+        if (v.youtubeId && !window.LabExtension && !options.manualPlayback) window.startDetailYouTube(v.youtubeId);
+    }
+    window.renderVideoDetailPage = renderVideoDetailPage;
+
+    function renderVideoDetail(id) {
+        const v = getVideos().find(video => video.id === id);
+        if(!v) {
+            if(!window.LabExtension?.ready){mainView.innerHTML='<p role="status">動画を読み込んでいます…</p>';return;}
+            return router('videos');
+        }
+        renderVideoDetailPage(v);
     }
 
     // --- プレイヤー操作関数 ---
@@ -684,11 +688,20 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
     };
     window.startDetailYouTube = function(videoId, callbacks={}) {
         window.resetDetailVideo();
-        const generation = detailGeneration, placeholder = document.getElementById('yt-player-detail'), started = Date.now();
-        if (!placeholder) return;
+        const generation = detailGeneration, started = Date.now();
+        // 特集の動画切り替えで、前のプレイヤー破棄後に置き場所が消えていても作り直す
+        let placeholder = document.getElementById('yt-player-detail');
+        if (!placeholder) {
+            const wrapper = document.querySelector('.video-wrapper');
+            if (!wrapper) return;
+            placeholder = document.createElement('div');
+            placeholder.id = 'yt-player-detail';
+            wrapper.replaceChildren(placeholder);
+        }
         // Render the standard embed immediately; API loading only adds timestamp synchronization.
         const mount=document.createElement('iframe'),url=new URL('https://www.youtube.com/embed/'+videoId);
         url.search=new URLSearchParams({enablejsapi:'1',origin:location.origin,rel:'0',playsinline:'1',start:String(Math.max(0,Math.floor(callbacks.initialTime||0)))});
+        if(callbacks.autoplay) url.searchParams.set('autoplay','1');
         mount.id='yt-player-detail';mount.title=callbacks.title||'YouTube動画';mount.src=url.href;
         mount.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
         mount.allowFullscreen=true;mount.referrerPolicy='strict-origin-when-cross-origin';
@@ -714,6 +727,21 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
             });
         };init();
     };
+    // 別のYouTube動画へ切り替える（特集の連結再生用）。APIが準備済みなら同じプレイヤーのまま読み替える。
+    window.loadDetailVideo = function(videoId, seconds, options = {}) {
+        if (!videoId) return;
+        const start = Math.max(0, Math.floor(Number(seconds) || 0));
+        if (detailPlayerReady && detailPlayer?.loadVideoById) {
+            pendingDetailSeek = null; pendingDetailPause = false;
+            if (options.pause) detailPlayer.cueVideoById?.({videoId, startSeconds: start});
+            else detailPlayer.loadVideoById({videoId, startSeconds: start});
+            options.onReady?.();
+            return;
+        }
+        window.startDetailYouTube(videoId, {initialTime: start, title: options.title, autoplay: !options.pause,
+            onReady: () => {window.seekDetailVideo(start, {pause: !!options.pause}); options.onReady?.();},
+            onError: options.onError});
+    };
     window.seekDetailVideo = function(seconds, options={}) {
         if(!Number.isFinite(seconds))return;
         seconds=Math.max(0,seconds);
@@ -730,6 +758,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
         }
     }
     window.labVideoTime = () => pendingDetailSeek??(detailPlayerReady?detailPlayer?.getCurrentTime?.()??NaN:NaN);
+    window.labDetailReady = () => detailPlayerReady;
     window.labVideoPlaying = () => detailPlayerReady&&detailPlayer?.getPlayerState?.()===1;
     window.labVideoState = () => detailPlayerReady?detailPlayer?.getPlayerState?.()??-1:-1;
     window.pauseDetailVideo = () => {pendingDetailPause=true;try{detailPlayer?.pauseVideo?.();}catch{}};
@@ -858,7 +887,7 @@ catch { document.documentElement.dataset.labTheme = 'light'; }
     });
 
 </script>
-<script type="module" src="lab-enhancements.js?v=20261020-labfix1"></script>
+<script type="module" src="lab-enhancements.js?v=20261020-feature1"></script>
 </body>
 </html>
 
