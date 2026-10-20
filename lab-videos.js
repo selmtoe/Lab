@@ -91,7 +91,8 @@ export function createVideoLibrary({state, node, button, openMatch}) {
         const clear = button('絞り込みを解除', () => {
             for (const [key, input] of inputs) input.value = filters[key] = key === 'sort' ? 'newest' : '';
             page = 0;draw();
-        });controls.append(clear);root.append(controls);
+        });        const playlist = button('特集再生', () => startPlaylist());
+        controls.append(clear, playlist);root.append(controls);
         const count = node('p', undefined, 'lab-video-count');count.setAttribute('aria-live', 'polite');
         const list = node('div', undefined, 'list-container'), pager = node('nav', undefined, 'lab-video-pagination');pager.setAttribute('aria-label', '一覧のページ');
         root.append(count, list, pager);
@@ -151,4 +152,86 @@ export function createVideoLibrary({state, node, button, openMatch}) {
         draw();
     }
     return {render};
+}
+
+// ---- 特集再生: 絞り込み結果の試合を順に再生する ----
+let playlistState = null, playlistTimer = 0;
+function currentRows() {
+    const filtered = filterVideoIndex(index, filters);
+    const rows = [];
+    for (const entry of filtered) {
+        for (const row of entry.matches) rows.push({ video: entry.video, match: row.match });
+    }
+    return rows;
+}
+function playlistBar() {
+    let bar = document.getElementById('lab-playlist-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'lab-playlist-bar';
+        bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:95;'
+            + 'display:flex;gap:10px;align-items:center;padding:8px 14px;border-radius:999px;'
+            + 'background:var(--surface-color);border:1px solid var(--border-color);'
+            + 'box-shadow:0 6px 24px rgba(0,0,0,.18);font-size:13px;color:var(--text-main)';
+        document.body.append(bar);
+    }
+    return bar;
+}
+function playStep(delta) {
+    if (!playlistState) return;
+    const next = playlistState.index + delta;
+    if (next < 0 || next >= playlistState.items.length) return stopPlaylist();
+    playlistState.index = next;
+    const item = playlistState.items[next];
+    openMatch(item.video, item.match);
+    renderPlaylistBar();
+}
+function renderPlaylistBar() {
+    if (!playlistState) return;
+    const bar = playlistBar(), item = playlistState.items[playlistState.index];
+    if (!bar || !item) return;
+    bar.replaceChildren();
+    const label = document.createElement('span');
+    label.textContent = `特集再生 ${playlistState.index + 1}/${playlistState.items.length}`
+        + ` · ${(item.match.players || []).filter(Boolean).join(' / ')} 試合${item.match.analysis?.index || ''}`
+        + (playlistState.auto ? ' · 自動送り' : '');
+    const prev = document.createElement('button');
+    prev.textContent = '前へ';prev.className = 'btn-outline';prev.onclick = () => playStep(-1);
+    const next = document.createElement('button');
+    next.textContent = '次へ';next.className = 'btn-outline';next.onclick = () => playStep(1);
+    const auto = document.createElement('button');
+    auto.textContent = playlistState.auto ? '自動送り:入' : '自動送り:切';auto.className = 'btn-outline';
+    auto.onclick = () => { playlistState.auto = !playlistState.auto; renderPlaylistBar(); scheduleAdvance(); };
+    const stop = document.createElement('button');
+    stop.textContent = '終了';stop.className = 'btn-outline';stop.onclick = stopPlaylist;
+    bar.append(label, prev, next, auto, stop);
+}
+function scheduleAdvance() {
+    clearTimeout(playlistTimer);
+    if (!playlistState || !playlistState.auto) return;
+    const item = playlistState.items[playlistState.index];
+    if (!item) return;
+    const tick = () => {
+        if (!playlistState || !playlistState.auto) return;
+        const seconds = window.labVideoTime?.();
+        if (Number.isFinite(seconds) && seconds >= (item.match.endSeconds || 0) - 0.3) {
+            playStep(1);
+            return;
+        }
+        playlistTimer = setTimeout(tick, 700);
+    };
+    playlistTimer = setTimeout(tick, 700);
+}
+export function stopPlaylist() {
+    playlistState = null;
+    clearTimeout(playlistTimer);
+    document.getElementById('lab-playlist-bar')?.remove();
+}
+export function startPlaylist() {
+    const rows = currentRows();
+    if (!rows.length) return;
+    playlistState = { items: rows, index: 0, auto: true };
+    renderPlaylistBar();
+    playStep(0);
+    scheduleAdvance();
 }
