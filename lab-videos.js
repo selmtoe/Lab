@@ -68,8 +68,12 @@ export function createVideoLibrary({state, node, button, openMatch}) {
         };
         const players = choices(index.flatMap(e => e.matches.flatMap(r => r.match.players || [])));
         select('プレイヤー', 'player', [['','すべて'], ...players]);
-        select('タグ', 'tag', [['','すべて'], ...choices(state.videos.flatMap(v => [...(v.tags || []), ...(v.labMatches || []).flatMap(m => m.tags || [])]))]);
-        select('解析', 'analysis', [['','すべて'], ['yes','解析あり'], ['no','解析なし']]);
+        select('相手', 'opponent', [['','すべて'], ...players]);
+        // タグ欄には解析系の合成タグ（動画解析）とプレイヤー名を出さない
+        const playerKeys = new Set(players.map(p => normalize(p[0])));
+        const tagChoices = choices(state.videos.flatMap(v => [...(v.tags || []), ...(v.labMatches || []).flatMap(m => m.tags || [])]))
+            .filter(([value]) => normalize(value) !== normalize('動画解析') && !playerKeys.has(normalize(value)));
+        select('タグ', 'tag', [['','すべて'], ...tagChoices]);
         select('並び順', 'sort', [['newest','新しい順'], ['oldest','古い順'], ['title','タイトル順']]);
         const clear = button('絞り込みを解除', () => {
             for (const [key, input] of inputs) input.value = filters[key] = key === 'sort' ? 'newest' : '';

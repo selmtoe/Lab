@@ -355,7 +355,7 @@ function mountVideo(video){
     const filterRow=node('div',undefined,'lab-match-filters');section.append(filterRow);
     const filter=node('input',undefined,'lab-tag-filter');filter.type='search';filter.placeholder='試合を検索（選手名・タグ）';filter.setAttribute('aria-label','解析した試合を絞り込む');filterRow.append(filter);
     const playerFilters=node('div',undefined,'lab-match-player-filters');
-    const playerSelects=['プレイヤー'].map(label=>{const wrap=node('label'),select=node('select');select.setAttribute('aria-label','この動画の'+label);for(const[value,text]of [['','すべてのプレイヤー'],...choices(video.labMatches.flatMap(m=>m.players||[]))]){const option=node('option',text);option.value=value;select.append(option);}wrap.append(select);playerFilters.append(wrap);return select;});filterRow.append(playerFilters);
+    const playerSelects=['プレイヤー','相手'].map(label=>{const wrap=node('label'),select=node('select');select.setAttribute('aria-label','この動画の'+label);for(const[value,text]of [['','すべてのプレイヤー'],...choices(video.labMatches.flatMap(m=>m.players||[]))]){const option=node('option',text);option.value=value;select.append(option);}wrap.append(select);playerFilters.append(wrap);return select;});filterRow.append(playerFilters);
     const rail=node('div',undefined,'lab-match-rail'),list=node('div',undefined,'lab-match-list');list.setAttribute('aria-label','試合一覧');
     const scrollMatches=direction=>list.scrollBy({left:direction*Math.max(160,list.clientWidth*.8),behavior:'auto'});
     const earlier=button('‹',()=>scrollMatches(-1),'btn-outline lab-match-scroll'),later=button('›',()=>scrollMatches(1),'btn-outline lab-match-scroll');earlier.setAttribute('aria-label','前の試合一覧');later.setAttribute('aria-label','次の試合一覧');
@@ -397,7 +397,7 @@ function mountVideo(video){
     const revealMatch=()=>{const row=rows.get(selected?.id);if(!row)return;const item=row.getBoundingClientRect(),viewport=list.getBoundingClientRect();if(item.left<viewport.left)list.scrollBy({left:item.left-viewport.left});else if(item.right>viewport.right)list.scrollBy({left:item.right-viewport.right});};
     const renderList=()=>{list.replaceChildren();rows.clear();const words=normalize(filter.value).split(' ').filter(Boolean);
         for(const [index,match]of video.labMatches.entries()){
-            if(!samePlayers(match.players,playerSelects[0].value))continue;
+            if(!samePlayers(match.players,playerSelects[0].value,playerSelects[1].value))continue;
             const text=normalize(JSON.stringify([match.title,match.players,match.tags,match.bookmarks]));if(!words.every(word=>text.includes(word)))continue;
             const row=node('div',undefined,'lab-match-row'+(selected?.id===match.id?' active':''));rows.set(match.id,row);
             const jump=button('',()=>seekPosition(match,0),'lab-match-jump'),label=node('span',undefined,'lab-match-label');label.append(node('strong',`試合 ${match.analysis?.index||index+1}`),node('span','▶ '+timeText(match.startSeconds+timeOffset(video)),'ts-link'));jump.append(label,playerNames(match));jump.setAttribute('aria-current',String(selected?.id===match.id));row.append(jump);
