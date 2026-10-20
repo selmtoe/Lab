@@ -217,7 +217,7 @@ function renderPlaylistBar() {
     if (!bar || !item) return;
     bar.replaceChildren();
     const label = document.createElement('span');
-    label.textContent = `特集再生 ${playlistState.index + 1}/${playlistState.items.length}`
+    label.textContent = `${playlistState.title || '特集'} ${playlistState.index + 1}/${playlistState.items.length}`
         + ` · ${(item.match.players || []).filter(Boolean).join(' / ')} 試合${item.match.analysis?.index || ''}`
         + (playlistState.auto ? ' · 自動送り' : '');
     const prev = document.createElement('button');
@@ -257,8 +257,22 @@ export function startPlaylist(ctx) {
     if (ctx) playlistCtx = ctx;
     const rows = currentRows();
     if (!rows.length) return;
-    playlistState = { items: rows, index: 0, auto: true };
+    playlistState = { items: rows, index: 0, auto: true, title: featureTitle(playlistCtx?.filters, rows.length) };
     renderPlaylistBar();
     playStep(0);
     scheduleAdvance();
+}
+
+// 絞り込み条件から特集タイトルを機械的に作る（例: 「いんたいの敗北集」「A vs B」）
+export function featureTitle(filters = {}, count = 0) {
+    const player = String(filters.player || '').trim();
+    const opponent = String(filters.opponent || '').trim();
+    const tag = String(filters.tag || '').trim();
+    const result = {win: '勝利集', lost: '敗北集', review: '未確定集'}[filters.result] || '';
+    let title;
+    if (player && opponent) title = `${player} vs ${opponent}` + (result ? ` の${result}` : '');
+    else if (player) title = `${player}の${result || '試合集'}`;
+    else if (tag) title = `${tag}の試合集`;
+    else title = result ? `全試合の${result}` : '試合集';
+    return count ? `${title}（${count}試合）` : title;
 }
