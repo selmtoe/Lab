@@ -309,6 +309,29 @@ window.labOpenSimulatorAtTime=()=>{
     const index=seconds==null?0:pageIndexAt(pages,seconds-match.startSeconds),page=pages[index];
     openTool('sim',pageState(page,'both',queuesForPage(match,index,page)),{...match,startSeconds:match.startSeconds+(page.time||0),phase:index,player:'both',_matchStart:match.startSeconds});
 };
+function crownMark(review){
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 24 24');
+    svg.setAttribute('class','lab-crown'+(review?' lab-crown-review':''));
+    svg.setAttribute('role','img');
+    svg.setAttribute('aria-label','勝者');
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d','M2.5 19.5v-12l5 3.6L12 4.6l4.5 6.5 5-3.6v12z');
+    svg.append(path);
+    return svg;
+}
+// 勝者側の名前の前に王冠を付ける（勝敗が無い試合はそのまま）
+function playerNames(match){
+    const wrap=node('span',undefined,'lab-match-players');
+    const names=(match.players||[]).filter(Boolean);
+    names.forEach((name,index)=>{
+        if(index)wrap.append(document.createTextNode(' / '));
+        const side=index===0?'p1':'p2';
+        if(match.winner===side)wrap.append(crownMark(match.winnerStatus!=='ok'));
+        wrap.append(document.createTextNode(name));
+    });
+    return wrap;
+}
 function mountVideo(video){
     window.labCurrentVideo=()=>video;
     const left=document.querySelector('.video-sticky-area'),right=document.querySelector('.video-detail-container > .article-body');if(!left||!right)return;
@@ -377,7 +400,7 @@ function mountVideo(video){
             if(!samePlayers(match.players,playerSelects[0].value))continue;
             const text=normalize(JSON.stringify([match.title,match.players,match.tags,match.bookmarks]));if(!words.every(word=>text.includes(word)))continue;
             const row=node('div',undefined,'lab-match-row'+(selected?.id===match.id?' active':''));rows.set(match.id,row);
-            const jump=button('',()=>seekPosition(match,0),'lab-match-jump'),label=node('span',undefined,'lab-match-label');label.append(node('strong',`試合 ${match.analysis?.index||index+1}`),node('span','▶ '+timeText(match.startSeconds+timeOffset(video)),'ts-link'));jump.append(label,node('span',(match.players||[]).filter(Boolean).join(' / '),'lab-match-players'));jump.setAttribute('aria-current',String(selected?.id===match.id));row.append(jump);
+            const jump=button('',()=>seekPosition(match,0),'lab-match-jump'),label=node('span',undefined,'lab-match-label');label.append(node('strong',`試合 ${match.analysis?.index||index+1}`),node('span','▶ '+timeText(match.startSeconds+timeOffset(video)),'ts-link'));jump.append(label,playerNames(match));jump.setAttribute('aria-current',String(selected?.id===match.id));row.append(jump);
             if(match.status==='failed')row.append(node('span','解析失敗','lab-failed'));tags(row,match.labOwnTags||match.tags);list.append(row);
         }if(!rows.size)list.append(node('p','条件に合う試合はありません。','lab-help-text'));requestAnimationFrame(()=>{revealMatch();updateScrollButtons();});};
     for(const select of playerSelects)select.onchange=()=>renderList();

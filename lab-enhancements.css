@@ -264,3 +264,9 @@ button.preview-ts-item{width:100%;padding:0;border:0;background:none;text-align:
   .lab-video-filters label:first-child{flex-basis:100%}
   .lab-video-filters select{max-width:100%;width:100%}
 }
+
+/* 勝者マーク（王冠）。ライト=線画、ダーク=塗り。絵文字は使わない。 */
+.lab-crown{width:13px;height:13px;flex:0 0 auto;color:#b8860b;vertical-align:-2px;margin-right:3px;display:inline-block}
+.lab-crown path{fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+:root[data-lab-theme="dark"] .lab-crown path{fill:currentColor;stroke:none}
+.lab-crown-review{opacity:.55}
